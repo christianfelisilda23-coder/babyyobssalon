@@ -668,7 +668,7 @@ document.addEventListener('click', e => {
     const regForm = $('#register-form');
     if (emailForm) emailForm.style.display = tab === 'email' ? 'flex' : 'none';
     if (regForm) regForm.style.display = tab === 'register' ? 'flex' : 'none';
-    if (tab === 'quick') { if ($('#login-email')) $('#login-email').value = 'admin@salon.com'; if ($('#login-pass')) $('#login-pass').value = 'admin'; if (emailForm) emailForm.style.display = 'flex'; if (regForm) regForm.style.display = 'none'; }
+    if (tab === 'email') { if (emailForm) emailForm.style.display = 'flex'; if (regForm) regForm.style.display = 'none'; }
     return;
   }
 });
