@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     postgres_host: str = "localhost"
     postgres_port: int = 5432
     postgres_db: str = "salon_db"
+    database_url: str = ""
 
     # --- Auth (stand-in for the real ARGO platform's identity provider) ---
     jwt_secret: str = "dev-only-secret-change-me"
@@ -30,8 +31,12 @@ class Settings(BaseSettings):
     environment: str = "development"
 
     @property
-    def database_url(self) -> str:
+    def async_database_url(self) -> str:
         """Async URL used by the running application (asyncpg driver)."""
+        if self.database_url:
+            url = self.database_url.replace("postgresql://", "postgresql+asyncpg://")
+            url = url.replace("postgres://", "postgresql+asyncpg://")
+            return url
         return (
             f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
@@ -40,6 +45,10 @@ class Settings(BaseSettings):
     @property
     def sync_database_url(self) -> str:
         """Sync URL used by Alembic migrations (psycopg2 driver)."""
+        if self.database_url:
+            url = self.database_url.replace("postgresql://", "postgresql+psycopg2://")
+            url = url.replace("postgres://", "postgresql+psycopg2://")
+            return url
         return (
             f"postgresql+psycopg2://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
