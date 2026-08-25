@@ -3,8 +3,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from sqlalchemy import select
 
 from app.core.config import get_settings
+from app.core.database import AsyncSessionLocal
+from app.core.security import hash_password
+from app.models.parties import Organization, PlatformUser, Staff
 from app.routers import (
     appointments,
     auth,
@@ -19,6 +23,8 @@ from app.routers import (
     staff,
     walk_ins,
 )
+
+import uuid
 
 settings = get_settings()
 
@@ -57,6 +63,44 @@ app.include_router(reports.router)
 @app.get("/health", tags=["health"])
 async def health():
     return {"status": "ok", "service": settings.app_name}
+
+
+@app.on_event("startup")
+async def seed_admin():
+    """Create a default admin account if admin@salon.com doesn't exist."""
+    async with AsyncSessionLocal() as db:
+        existing = (
+            await db.execute(select(PlatformUser).where(PlatformUser.email == "admin@salon.com"))
+        ).scalar_one_or_none()
+        if existing:
+            return
+
+        org = Organization(id=uuid.uuid4(), name="Bloom Studio")
+        db.add(org)
+        await db.flush()
+
+        admin = PlatformUser(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            email="admin@salon.com",
+            hashed_password=hash_password("admin123"),
+            role="admin",
+        )
+        db.add(admin)
+        await db.flush()
+
+        staff_member = Staff(
+            id=uuid.uuid4(),
+            organization_id=org.id,
+            user_id=admin.id,
+            display_name="Admin",
+            title="Owner",
+            active=True,
+            created_by=admin.id,
+            updated_by=admin.id,
+        )
+        db.add(staff_member)
+        await db.commit()
 
 
 @app.exception_handler(StarletteHTTPException)
