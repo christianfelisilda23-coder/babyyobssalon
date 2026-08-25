@@ -66,40 +66,77 @@ async def health():
 
 
 @app.on_event("startup")
-async def seed_admin():
-    """Create a default admin account if admin@salon.com doesn't exist."""
+async def seed_accounts():
+    """Create default admin and staff accounts if they don't exist."""
     async with AsyncSessionLocal() as db:
-        existing = (
+        # Seed admin
+        admin_exists = (
             await db.execute(select(PlatformUser).where(PlatformUser.email == "admin@salon.com"))
         ).scalar_one_or_none()
-        if existing:
-            return
 
-        org = Organization(id=uuid.uuid4(), name="Bloom Studio")
-        db.add(org)
-        await db.flush()
+        org = None
+        admin_user = None
 
-        admin = PlatformUser(
-            id=uuid.uuid4(),
-            organization_id=org.id,
-            email="admin@salon.com",
-            hashed_password=hash_password("admin123"),
-            role="admin",
-        )
-        db.add(admin)
-        await db.flush()
+        if not admin_exists:
+            org = Organization(id=uuid.uuid4(), name="Bloom Studio")
+            db.add(org)
+            await db.flush()
 
-        staff_member = Staff(
-            id=uuid.uuid4(),
-            organization_id=org.id,
-            user_id=admin.id,
-            display_name="Admin",
-            title="Owner",
-            active=True,
-            created_by=admin.id,
-            updated_by=admin.id,
-        )
-        db.add(staff_member)
+            admin_user = PlatformUser(
+                id=uuid.uuid4(),
+                organization_id=org.id,
+                email="admin@salon.com",
+                hashed_password=hash_password("admin123"),
+                role="admin",
+            )
+            db.add(admin_user)
+            await db.flush()
+
+            admin_staff = Staff(
+                id=uuid.uuid4(),
+                organization_id=org.id,
+                user_id=admin_user.id,
+                display_name="Admin User",
+                title="Owner",
+                active=True,
+                created_by=admin_user.id,
+                updated_by=admin_user.id,
+            )
+            db.add(admin_staff)
+        else:
+            admin_user = admin_exists
+            org = (await db.execute(
+                select(Organization).where(Organization.id == admin_user.organization_id)
+            )).scalar_one_or_none()
+
+        # Seed staff
+        staff_exists = (
+            await db.execute(select(PlatformUser).where(PlatformUser.email == "staff@salon.com"))
+        ).scalar_one_or_none()
+
+        if not staff_exists and org and admin_user:
+            staff_user = PlatformUser(
+                id=uuid.uuid4(),
+                organization_id=org.id,
+                email="staff@salon.com",
+                hashed_password=hash_password("staff123"),
+                role="staff",
+            )
+            db.add(staff_user)
+            await db.flush()
+
+            staff_member = Staff(
+                id=uuid.uuid4(),
+                organization_id=org.id,
+                user_id=staff_user.id,
+                display_name="Staff Member",
+                title="Stylist",
+                active=True,
+                created_by=admin_user.id,
+                updated_by=admin_user.id,
+            )
+            db.add(staff_member)
+
         await db.commit()
 
 
