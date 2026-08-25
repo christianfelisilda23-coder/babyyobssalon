@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bloom Studio · Salon Manager</title>
+<link rel="stylesheet" href="app.css">
+<link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- ================= Login overlay ================= -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-card">
+    <div class="logo"><i class="ti ti-flower"></i></div>
+    <h2>Bloom Studio</h2>
+    <p class="sub">Sign in to manage your salon</p>
+    <div class="tabs" id="login-tabs">
+      <button class="tab active" data-login-tab="email">Email</button>
+      <button class="tab" data-login-tab="quick">Quick demo</button>
+    </div>
+    <form onsubmit="event.preventDefault(); doLogin();" id="login-form">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="admin@salon.com" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-pass" placeholder="••••••••">
+      </div>
+      <p class="login-err" id="login-err"></p>
+      <button class="btn btn-primary" type="submit" id="login-btn">Sign in</button>
+    </form>
+    <p class="hint" style="margin:12px 0 0; text-align:center">Demo accounts · admin@salon.com / admin · staff@salon.com / staff</p>
+  </div>
+</div>
+
+<!-- ================= Shell ================= -->
+<div class="shell">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="mark"><i class="ti ti-flower"></i></div>
+      <div class="name">Bloom Studio</div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav">
+    </nav>
+    <div class="sidebar-foot">Bloom Studio v1.0</div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="org-pill"><span class="dot">B</span><span>Bloom Studio · Quezon City</span></div>
+      <div class="topbar-right">
+        <div style="text-align:right">
+          <div style="font-size:13px;color:#E2E8F0;font-weight:600" id="user-email"></div>
+          <div style="font-size:11px;color:#64748B" id="user-role"></div>
+        </div>
+        <div class="avatar" id="top-avatar">B</div>
+        <button class="logout" onclick="doLogout()">Sign out</button>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- ============ Dashboard ============ -->
+      <section id="page-dashboard">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Dashboard</h1>
+            <p class="page-sub">Salon performance at a glance</p>
+          </div>
+          <button class="btn btn-primary" onclick="openApptModal()"><i class="ti ti-plus"></i> New appointment</button>
+        </div>
+
+        <div class="kpi-row">
+          <div class="kpi-card"><div class="kpi-icon" style="background:#EFF6FF;color:#2563EB"><i class="ti ti-calendar-event"></i></div>
+            <div><div class="kpi-value" id="kpi-today">0</div><div class="kpi-label">Appointments today</div></div></div>
+          <div class="kpi-card"><div class="kpi-icon" style="background:#ECFDF5;color:#059669"><i class="ti ti-coin"></i></div>
+            <div><div class="kpi-value" id="kpi-revenue">₱0</div><div class="kpi-label">Revenue today</div></div></div>
+          <div class="kpi-card"><div class="kpi-icon" style="background:#FEF3C7;color:#D97706"><i class="ti ti-users"></i></div>
+            <div><div class="kpi-value" id="kpi-clients">0</div><div class="kpi-label">Total clients</div></div></div>
+          <div class="kpi-card"><div class="kpi-icon" style="background:#FCE7F3;color:#DB2777"><i class="ti ti-user-check"></i></div>
+            <div><div class="kpi-value" id="kpi-staff">0</div><div class="kpi-label">Active staff</div></div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h3 class="panel-title">Upcoming appointments</h3></div>
+          <div class="table-scroll"><table>
+            <thead><tr><th>Date</th><th>Time</th><th>Client</th><th>Service</th><th>Stylist</th><th>Status</th><th>Amount</th></tr></thead>
+            <tbody id="upcoming-tbody"></tbody>
+          </table></div>
+          <div class="empty-state" id="upcoming-empty" style="display:none">
+            <div class="icon"><i class="ti ti-calendar-plus"></i></div>
+            <h4>No upcoming appointments</h4><p>Bookings for today and the coming days will appear here.</p>
+          </div>
+          <div class="mobile-list" id="mobile-upcoming"></div>
+        </div>
+
+        <div class="panel" style="margin-top:18px">
+          <div class="panel-header"><h3 class="panel-title">Today's team load</h3></div>
+          <div class="table-scroll"><table>
+            <thead><tr><th>Team Member</th><th>Role</th><th>Appointments</th><th>Revenue</th><th>Load</th></tr></thead>
+            <tbody id="dashboard-staff-tbody"></tbody>
+          </table></div>
+          <div class="empty-state" id="dashboard-staff-empty" style="display:none">
+            <div class="icon"><i class="ti ti-user-circle"></i></div>
+            <h4>No team members yet</h4><p>Add staff from the Staff page to see today's load.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Appointments ============ -->
+      <section id="page-appointments" style="display:none">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Appointments</h1>
+            <p class="page-sub" id="appts-total"></p>
+          </div>
+          <button class="btn btn-primary" onclick="openApptModal()"><i class="ti ti-plus"></i> New appointment</button>
+        </div>
+
+        <div class="filter-bar panel">
+          <div class="search-wrap"><i class="ti ti-search"></i>
+            <input class="search-input" id="appts-q" data-key="appointments" placeholder="Search client, service or stylist...">
+          </div>
+          <select class="filter-select" id="appts-status">
+            <option value="all">All statuses</option>
+            <option>pending</option>
+            <option>confirmed</option>
+            <option>checked-in</option>
+            <option>completed</option>
+            <option>cancelled</option>
+          </select>
+          <select class="filter-select" id="appts-date">
+            <option value="all">All dates</option>
+            <option value="today">Today</option>
+            <option value="upcoming">Upcoming</option>
+          </select>
+        </div>
+
+        <div class="panel">
+          <div class="table-scroll"><table>
+            <thead><tr><th>Date</th><th>Time</th><th>Client</th><th>Service</th><th>Stylist</th><th>Status</th><th>Amount</th><th></th></tr></thead>
+            <tbody id="appts-tbody"></tbody>
+          </table></div>
+          <div class="empty-state" id="appts-empty" style="display:none">
+            <div class="icon"><i class="ti ti-calendar-off"></i></div>
+            <h4>No appointments found</h4>
+            <p>Try adjusting the filters or book a new appointment.</p>
+          </div>
+          <div class="mobile-list" id="appts-mobile"></div>
+          <div id="appts-pager"></div>
+        </div>
+      </section>
+
+      <!-- ============ Clients ============ -->
+      <section id="page-clients" style="display:none">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Clients</h1>
+            <p class="page-sub" id="clients-total"></p>
+          </div>
+          <button class="btn btn-primary" onclick="openClientModal()"><i class="ti ti-plus"></i> Add client</button>
+        </div>
+
+        <div class="filter-bar panel">
+          <div class="search-wrap"><i class="ti ti-search"></i>
+            <input class="search-input" data-key="clients" placeholder="Search clients...">
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="table-scroll"><table>
+            <thead><tr><th>Client</th><th>Contact</th><th>Visits</th><th>Lifetime Value</th><th></th></tr></thead>
+            <tbody id="clients-tbody"></tbody>
+          </table></div>
+          <div class="empty-state" id="clients-empty" style="display:none">
+            <div class="icon"><i class="ti ti-users"></i></div>
+            <h4>No clients found</h4>
+            <p>Add your first client to get started.</p>
+          </div>
+          <div class="mobile-list" id="clients-mobile"></div>
+          <div id="clients-pager"></div>
+        </div>
+      </section>
+
+      <!-- ============ Staff ============ -->
+      <section id="page-staff" style="display:none">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Staff</h1>
+            <p class="page-sub" id="staff-total"></p>
+          </div>
+          <button class="btn btn-primary" onclick="openStaffModal()"><i class="ti ti-plus"></i> Add member</button>
+        </div>
+
+        <div class="filter-bar panel">
+          <div class="search-wrap"><i class="ti ti-search"></i>
+            <input class="search-input" data-key="staff" placeholder="Search staff...">
+          </div>
+          <select class="filter-select" id="staff-status">
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="onleave">On leave</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+
+        <div class="panel">
+          <div class="table-scroll"><table>
+            <thead><tr><th>Team Member</th><th>Role</th><th>Contact</th><th>Status</th><th></th></tr></thead>
+            <tbody id="staff-tbody"></tbody>
+          </table></div>
+          <div class="empty-state" id="staff-empty" style="display:none">
+            <div class="icon"><i class="ti ti-user-circle"></i></div>
+            <h4>No staff members found</h4>
+            <p>Add your first team member.</p>
+          </div>
+          <div class="mobile-list" id="staff-mobile"></div>
+          <div id="staff-pager"></div>
+        </div>
+      </section>
+
+      <!-- ============ Services ============ -->
+      <section id="page-services" style="display:none">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Services</h1>
+            <p class="page-sub"><span id="svc-count">0</span> services on the menu</p>
+          </div>
+          <button class="btn btn-primary" onclick="openSvcModal()"><i class="ti ti-plus"></i> New service</button>
+        </div>
+
+        <div class="panel">
+          <div class="table-scroll"><table>
+            <thead><tr><th>Service</th><th>Category</th><th>Duration</th><th>Price</th><th></th></tr></thead>
+            <tbody id="svc-tbody"></tbody>
+          </table></div>
+          <div class="empty-state" id="svc-empty" style="display:none">
+            <div class="icon"><i class="ti ti-scissors"></i></div>
+            <h4>No services yet</h4><p>Add your first service to start selling.</p>
+          </div>
+          <div id="svc-pager"></div>
+        </div>
+      </section>
+
+      <!-- ============ Reports ============ -->
+      <section id="page-reports" style="display:none">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Reports</h1>
+            <p class="page-sub">This month's performance</p>
+          </div>
+        </div>
+
+        <div class="kpi-row">
+          <div class="kpi-card"><div class="kpi-icon" style="background:#ECFDF5;color:#059669"><i class="ti ti-coin"></i></div>
+            <div><div class="kpi-value" id="rep-total">₱0</div><div class="kpi-label">Revenue this month</div></div></div>
+          <div class="kpi-card"><div class="kpi-icon" style="background:#EFF6FF;color:#2563EB"><i class="ti ti-calendar-event"></i></div>
+            <div><div class="kpi-value" id="rep-appts">0</div><div class="kpi-label">Appointments this month</div></div></div>
+          <div class="kpi-card"><div class="kpi-icon" style="background:#FEF3C7;color:#D97706"><i class="ti ti-ticket"></i></div>
+            <div><div class="kpi-value" id="rep-avg">₱0</div><div class="kpi-label">Avg ticket</div></div></div>
+          <div class="kpi-card"><div class="kpi-icon" style="background:#FCE7F3;color:#DB2777"><i class="ti ti-user-check"></i></div>
+            <div><div class="kpi-value" id="rep-coming">0</div><div class="kpi-label">Upcoming this month</div></div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px" class="rep-grid">
+          <div class="panel">
+            <div class="panel-header"><h3 class="panel-title">Top services</h3></div>
+            <div class="table-scroll"><table><tbody id="rep-svc-tbody"></tbody></table></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h3 class="panel-title">Staff performance</h3></div>
+            <div class="table-scroll">
+              <table><thead><tr><th>Member</th><th>Appointments</th><th>Revenue</th></tr></thead><tbody id="rep-staff-tbody"></tbody></table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:18px">
+          <div class="panel-header">
+            <h3 class="panel-title">Recent completed work</h3>
+            <p class="page-sub" style="margin:2px 0 0"><span id="rep-clients">0</span> unique clients served this month</p>
+          </div>
+          <div class="table-scroll">
+            <table><thead><tr><th>Client</th><th>Service</th><th>Date</th><th>Amount</th></tr></thead><tbody id="rep-recent-tbody"></tbody></table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ================= Modals ================= -->
+
+<div class="modal-backdrop" id="appt-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="appt-modal-title">New appointment</h3>
+      <button data-close="appt-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>Date</label><input type="date" id="f-date"></div>
+        <div class="field"><label>Time</label><input type="time" id="f-time"></div>
+      </div>
+      <div class="field"><label>Client</label><input id="f-client" list="clients-list" placeholder="Type or pick a client">
+        <datalist id="clients-list"></datalist></div>
+      <div class="field"><label>Service</label><input id="f-service" list="services-list" placeholder="Type or pick a service">
+        <datalist id="services-list"></datalist></div>
+      <div class="field"><label>Stylist</label><input id="f-staff" list="staff-list" placeholder="Type or pick a stylist">
+        <datalist id="staff-list"></datalist></div>
+      <div class="field"><label>Price (₱)</label><input type="number" id="f-price" placeholder="Auto-filled from service"></div>
+      <div class="field"><label>Status</label>
+        <select id="f-status">
+          <option value="pending">Pending</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="checked-in">Checked in</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select></div>
+      <p class="modal-err" id="appt-err"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" data-close="appt-modal">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAppointment()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="client-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="client-modal-title">New client</h3>
+      <button data-close="client-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Full name</label><input id="cf-name"></div>
+      <div class="field"><label>Phone</label><input id="cf-phone"></div>
+      <div class="field"><label>Email</label><input id="cf-email"></div>
+      <p class="modal-err" id="client-err"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" data-close="client-modal">Cancel</button>
+      <button class="btn btn-primary" onclick="saveClient()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="staff-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="staff-modal-title">Add staff member</h3>
+      <button data-close="staff-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Full name</label><input id="sf-name"></div>
+      <div class="field"><label>Role</label><input id="sf-role" placeholder="Stylist"></div>
+      <div class="field-row">
+        <div class="field"><label>Phone</label><input id="sf-phone"></div>
+        <div class="field"><label>Email</label><input id="sf-email"></div>
+      </div>
+      <div class="field"><label>Status</label>
+        <select id="sf-status"><option value="active">Active</option><option value="onleave">On leave</option><option value="inactive">Inactive</option></select></div>
+      <p class="modal-err" id="staff-err"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" data-close="staff-modal">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStaff()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="svc-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="svc-modal-title">New service</h3>
+      <button data-close="svc-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Service name</label><input id="v-name"></div>
+      <div class="field"><label>Category</label>
+        <select id="v-cat">
+          <option>Cut &amp; Style</option>
+          <option>Styling</option>
+          <option>Color</option>
+          <option>Treatment</option>
+          <option>Nails</option>
+          <option>Skin</option>
+        </select></div>
+      <div class="field-row">
+        <div class="field"><label>Duration (min)</label><input type="number" id="v-dur"></div>
+        <div class="field"><label>Price (₱)</label><input type="number" id="v-price"></div>
+      </div>
+      <p class="modal-err" id="svc-err"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" data-close="svc-modal">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSvc()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
