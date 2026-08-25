@@ -12,10 +12,18 @@ from app.core.security import (
     get_current_principal,
     get_refresh_principal,
     hash_password,
+    require_role,
     verify_password,
 )
 from app.models import Organization, PlatformUser, Staff
-from app.schemas.schemas import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse
+from app.schemas.schemas import (
+    CreateUserRequest,
+    LoginRequest,
+    RefreshRequest,
+    RegisterRequest,
+    TokenResponse,
+    UserOut,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -112,3 +120,62 @@ async def refresh(
 
     # Re-issue with the user's current role (handles role changes).
     return _token_pair(user)
+
+
+@router.post("/users", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+async def create_user(
+    payload: CreateUserRequest,
+    db: AsyncSession = Depends(get_db),
+    principal: Principal = Depends(require_role("admin")),
+):
+    """Create a platform user within the current organization. Admin only."""
+    existing = (
+        await db.execute(select(PlatformUser).where(PlatformUser.email == payload.email))
+    ).scalar_one_or_none()
+    if existing is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+
+    user = PlatformUser(
+        id=uuid.uuid4(),
+        organization_id=principal.organization_id,
+        email=payload.email,
+        hashed_password=hash_password(payload.password),
+        role=payload.role,
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@router.get("/users", response_model=list[UserOut])
+async def list_users(
+    db: AsyncSession = Depends(get_db),
+    principal: Principal = Depends(require_role("admin")),
+):
+    """List platform users in the current organization. Admin only."""
+    result = await db.execute(
+        select(PlatformUser).where(PlatformUser.organization_id == principal.organization_id)
+    )
+    return result.scalars().all()
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    principal: Principal = Depends(require_role("admin")),
+):
+    """Delete a platform user in the current organization. Admin only."""
+    user = (
+        await db.execute(
+            select(PlatformUser).where(
+                PlatformUser.id == user_id,
+                PlatformUser.organization_id == principal.organization_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    await db.delete(user)
+    await db.commit()
