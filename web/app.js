@@ -3,7 +3,7 @@
    ============================================================ */
 
 // ─── Configuration ───────────────────────────────────────────
-const API_BASE = localStorage.getItem('salon_api_base') || 'http://localhost:8000';
+const API_BASE = localStorage.getItem('salon_api_base') || 'https://salon-backend-irjr.onrender.com';
 
 // ─── Token Management ────────────────────────────────────────
 let authToken = localStorage.getItem('salon_token');
