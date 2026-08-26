@@ -525,7 +525,7 @@ function renderLoyalty() {
   if ($('#loyalty-promos')) $('#loyalty-promos').textContent = db.promotions.filter(p => p.active).length;
   if ($('#loyalty-points')) $('#loyalty-points').textContent = db.clients.reduce((s, c) => s + (c.loyaltyPoints || 0), 0);
   if (loyaltyTab === 'members') {
-    if ($('#loyalty-members-tbody')) $('#loyalty-members-tbody').innerHTML = db.clients.filter(c => (c.loyaltyPoints || 0) > 0).map(c => `<tr><td class="cell-primary">${esc(c.name)}</td><td>${c.loyaltyPoints || 0}</td><td>${tierBadge(c.tier || 'Bronze')}</td><td>${c.visit} visits</td><td class="actions-cell"><div class="kebab-wrap"><button class="kebab-btn" onclick="toggleKebab(this)">&#8942;</button><div class="kebab-menu"><button data-act="edit-loyalty" data-id="${c.id}"><i class="ti ti-pencil"></i> Adjust Points</button></div></div></td></tr>`).join('') || `<tr><td class="cell-muted" style="text-align:center;padding:20px" colspan="5">No loyalty members yet</td></tr>`;
+    if ($('#loyalty-members-tbody')) $('#loyalty-members-tbody').innerHTML = db.clients.filter(c => (c.loyaltyPoints || 0) > 0).map(c => `<tr><td class="cell-primary">${esc(c.name)}</td><td>${c.loyaltyPoints || 0}</td><td>${tierBadge(c.tier || 'Bronze')}</td><td>${c.visit} visits</td><td class="actions-cell"><div class="kebab-wrap"><button class="kebab-btn" onclick="toggleKebab(this)">&#8942;</button><div class="kebab-menu"><button data-act="edit-loyalty" data-id="${c.id}"><i class="ti ti-pencil"></i> Adjust Points</button><button class="danger" data-act="remove-loyalty" data-id="${c.id}"><i class="ti ti-heart-off"></i> Remove</button></div></div></td></tr>`).join('') || `<tr><td class="cell-muted" style="text-align:center;padding:20px" colspan="5">No loyalty members yet</td></tr>`;
   } else {
     if ($('#loyalty-promos-tbody')) $('#loyalty-promos-tbody').innerHTML = db.promotions.map(p => `<tr><td class="cell-primary">${esc(p.name)}</td><td><span class="badge badge-blue"><span class="bdot"></span>${esc(p.type)}</span></td><td>${p.type === 'percentage' ? p.value + '%' : money(p.value)}</td><td>${esc(p.startDate || '—')} — ${esc(p.endDate || '—')}</td><td><span class="badge ${p.active ? 'badge-emerald' : 'badge-gray'}"><span class="bdot"></span>${p.active ? 'Active' : 'Inactive'}</span></td><td class="actions-cell"><div class="kebab-wrap"><button class="kebab-btn" onclick="toggleKebab(this)">&#8942;</button><div class="kebab-menu"><button data-act="toggle-promo" data-id="${p.id}"><i class="ti ti-toggle"></i> ${p.active ? 'Deactivate' : 'Activate'}</button><button class="danger" data-act="delete-promo" data-id="${p.id}"><i class="ti ti-trash"></i> Delete</button></div></div></td></tr>`).join('') || `<tr><td class="cell-muted" style="text-align:center;padding:20px" colspan="6">No promotions yet</td></tr>`;
   }
@@ -537,8 +537,50 @@ function savePromo() { const name = $('#promo-name').value.trim(), type = $('#pr
 function togglePromo(id) { const p = db.promotions.find(x => x.id === id); if (!p) return; p.active = !p.active; saveLocal(); renderLoyalty(); toast(p.active ? 'Promotion activated' : 'Promotion deactivated'); }
 function deletePromo(id) { db.promotions = db.promotions.filter(p => p.id !== id); saveLocal(); renderLoyalty(); toast('Promotion deleted', true); }
 let editingLoyaltyId = null;
-function openLoyaltyModal(id) { editingLoyaltyId = id || null; const c = db.clients.find(x => x.id === id); if (!c) return; openModal('#loyalty-adjust-modal'); if ($('#la-name')) $('#la-name').textContent = c.name; if ($('#la-points')) $('#la-points').value = c.loyaltyPoints || 0; }
-function saveLoyalty() { if (!editingLoyaltyId) return; const c = db.clients.find(x => x.id === editingLoyaltyId); if (!c) return; const pts = Number($('#la-points').value); c.loyaltyPoints = pts; c.tier = getTier(pts); saveLocal(); closeModal('#loyalty-adjust-modal'); renderLoyalty(); toast('Points updated'); }
+function openLoyaltyModal(id) {
+  editingLoyaltyId = id || null;
+  $('#la-err').textContent = '';
+  if (id) {
+    const c = db.clients.find(x => x.id === id);
+    if (!c) return;
+    $('#la-modal-title').textContent = 'Edit Loyalty Points';
+    if ($('#la-client-field-wrap')) $('#la-client-field-wrap').style.display = 'none';
+    if ($('#la-name-display-wrap')) $('#la-name-display-wrap').style.display = '';
+    if ($('#la-name-display')) $('#la-name-display').textContent = c.name;
+    if ($('#la-points')) $('#la-points').value = c.loyaltyPoints || 0;
+  } else {
+    $('#la-modal-title').textContent = 'Add Loyalty Member';
+    if ($('#la-client-field-wrap')) $('#la-client-field-wrap').style.display = '';
+    if ($('#la-name-display-wrap')) $('#la-name-display-wrap').style.display = 'none';
+    if ($('#la-client-select')) {
+      const enrolled = new Set(db.clients.filter(c => (c.loyaltyPoints || 0) > 0).map(c => c.id));
+      $('#la-client-select').innerHTML = '<option value="">Select customer...</option>' + db.clients.filter(c => !enrolled.has(c.id)).map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
+    }
+    if ($('#la-points')) $('#la-points').value = 0;
+  }
+  openModal('#loyalty-adjust-modal');
+}
+function saveLoyalty() {
+  if (editingLoyaltyId) {
+    const c = db.clients.find(x => x.id === editingLoyaltyId);
+    if (!c) return;
+    const pts = Number($('#la-points').value);
+    c.loyaltyPoints = pts;
+    c.tier = getTier(pts);
+  } else {
+    const clientId = $('#la-client-select') ? $('#la-client-select').value : '';
+    if (!clientId) { $('#la-err').textContent = 'Select a customer.'; return; }
+    const c = db.clients.find(x => x.id === clientId);
+    if (!c) return;
+    const pts = Number($('#la-points').value);
+    c.loyaltyPoints = pts;
+    c.tier = getTier(pts);
+  }
+  saveLocal();
+  closeModal('#loyalty-adjust-modal');
+  renderLoyalty();
+  toast(editingLoyaltyId ? 'Points updated' : 'Member added to loyalty');
+}
 
 // ─── Reports ─────────────────────────────────────────────────
 async function renderReports() {
@@ -724,6 +766,7 @@ document.addEventListener('click', e => {
       case 'respond-review': openReviewModal(id); break;
       case 'delete-review': deleteReview(id); break;
       case 'delete-user': deleteUser(id); break;
+      case 'remove-loyalty': { const c = db.clients.find(x => x.id === id); if (c) { c.loyaltyPoints = 0; c.tier = 'Bronze'; saveLocal(); renderLoyalty(); toast('Removed from loyalty'); } break; }
     }
     closeAllKebabs(); return;
   }

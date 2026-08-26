@@ -529,7 +529,7 @@
               <button class="btn btn-primary btn-sm" onclick="openLoyaltyModal()"><i class="ti ti-plus"></i> Add member</button>
             </div>
             <div class="table-scroll"><table>
-              <thead><tr><th>Customer</th><th>Points</th><th>Tier</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Customer</th><th>Points</th><th>Tier</th><th>Visits</th><th>Actions</th></tr></thead>
               <tbody id="loyalty-members-tbody"></tbody>
             </table></div>
             <div class="empty-state" id="loyalty-members-empty" style="display:none">
@@ -988,6 +988,32 @@
     <div class="modal-foot">
       <button class="btn btn-secondary" data-close="promo-modal">Cancel</button>
       <button class="btn btn-primary" onclick="savePromo()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="loyalty-adjust-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="la-modal-title">Add Loyalty Member</h3>
+      <button data-close="loyalty-adjust-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="field" id="la-client-field-wrap">
+        <label>Customer</label>
+        <select id="la-client-select"><option value="">Select customer...</option></select>
+      </div>
+      <div class="field" id="la-name-display-wrap" style="display:none">
+        <label>Customer</label>
+        <div id="la-name-display" style="padding:8px 11px;background:var(--g50);border:1px solid var(--g300);border-radius:8px;font-weight:600"></div>
+      </div>
+      <div class="field">
+        <label>Loyalty Points</label>
+        <input type="number" id="la-points" value="0" min="0">
+      </div>
+      <p class="modal-err" id="la-err"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" data-close="loyalty-adjust-modal">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLoyalty()">Save</button>
     </div>
   </div>
 </div>
