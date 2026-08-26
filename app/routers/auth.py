@@ -103,7 +103,12 @@ async def client_register(payload: ClientRegisterRequest, db: AsyncSession = Dep
     if existing is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
-    org = (await db.execute(select(Organization))).scalars().first()
+    org = (await db.execute(
+        select(Organization)
+        .join(PlatformUser, PlatformUser.organization_id == Organization.id)
+        .where(PlatformUser.role.in_(["admin", "staff"]))
+        .limit(1)
+    )).scalars().first()
     if org is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No organization available")
 
