@@ -78,6 +78,8 @@ button.logout:hover{color:#fff;border-color:#64748B;}
 .btn-secondary:hover{background:var(--g200);}
 .btn-outline{background:#fff; color:var(--g700); border-color:var(--g300);}
 .btn-outline:hover{background:var(--g50);}
+.billing-pay-btn.active{background:var(--primary)!important; color:#fff!important; border-color:var(--primary)!important;}
+.billing-pay-btn.active i{color:#fff!important;}
 .btn-delete{background:var(--danger); color:#fff;}
 .btn-delete:hover{background:#BE123C;}
 .btn-sm{height:30px; padding:0 10px; font-size:13px;}

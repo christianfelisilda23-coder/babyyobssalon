@@ -355,7 +355,7 @@ async function renderInventory() {
 }
 let editingInvId = null;
 function openInventoryModal(id) { editingInvId = id || null; $('#inv-err').textContent = ''; const p = id ? db.products.find(x => x.id === id) : null; $('#inv-modal-title').textContent = p ? 'Edit product' : 'New product'; $('#inv-name').value = p ? p.name : ''; $('#inv-cat').value = p ? p.category : 'Hair Care'; $('#inv-stock').value = p ? p.stock : 0; $('#inv-price').value = p ? p.unitPrice : ''; $('#inv-threshold').value = p ? p.lowStockThreshold : 10; $('#inv-supplier').value = p ? p.supplier : ''; if ($('#inv-unit')) $('#inv-unit').value = p ? p.unit : 'pcs'; openModal('#inventory-modal'); }
-async function saveProduct() {
+async function saveInventoryItem() {
   const name = $('#inv-name').value.trim(), category = $('#inv-cat').value.trim(), stock = Number($('#inv-stock').value), unitPrice = Number($('#inv-price').value), lowStockThreshold = Number($('#inv-threshold').value), supplier = $('#inv-supplier').value.trim(), unit = $('#inv-unit') ? $('#inv-unit').value.trim() : 'pcs';
   if (!name || !category || !unitPrice) { $('#inv-err').textContent = 'Name, category and price required.'; return; }
   try {
@@ -404,10 +404,14 @@ function saveSchedule() {
 // ─── Billing ─────────────────────────────────────────────────
 let billingItems = [];
 let billingPaymentMethod = 'cash';
-function renderBilling() {
-  $('#billing-customers-list').innerHTML = clientOptions();
-  $('#billing-services-list').innerHTML = serviceOptions();
-  $('#billing-products-list').innerHTML = productOptions();
+async function renderBilling() {
+  if (!db.services.length || !db.staff.length) {
+    toast('Loading billing data...');
+    await loadAllData();
+  }
+  if ($('#billing-customers-list')) $('#billing-customers-list').innerHTML = clientOptions();
+  if ($('#billing-services-list')) $('#billing-services-list').innerHTML = serviceOptions();
+  if ($('#billing-products-list')) $('#billing-products-list').innerHTML = productOptions();
   if ($('#billing-staff-select')) $('#billing-staff-select').innerHTML = '<option value="">Select staff...</option>' + staffSelectOptions();
   renderBillingItems();
   if ($('#billing-recent-tbody')) {
