@@ -194,9 +194,9 @@ async def create_user(
 @router.get("/users", response_model=list[UserOut])
 async def list_users(
     db: AsyncSession = Depends(get_db),
-    principal: Principal = Depends(require_role("admin")),
+    principal: Principal = Depends(require_role("admin", "owner", "front_desk")),
 ):
-    """List platform users in the current organization. Admin only."""
+    """List platform users in the current organization."""
     result = await db.execute(
         select(PlatformUser).where(PlatformUser.organization_id == principal.organization_id)
     )

@@ -76,7 +76,7 @@ async function loadAllData() {
       return { id: p.id, appointmentId: p.appointment_id, date: (p.paid_at || p.created_at || '').slice(0, 10), customer: appt ? appt.client : 'Customer', amount: p.amount_cents / 100, method: p.method, status: p.status, tip: p.tip_cents / 100, discount: p.discount_cents / 100, _raw: p };
     });
 
-    if (tokenPayload && tokenPayload.role === 'admin') {
+    if (tokenPayload && ['admin', 'owner', 'front_desk'].includes(tokenPayload.role)) {
       try { db.users = await api('GET', '/auth/users'); } catch(e) { db.users = []; }
     }
     try { db.notifications = await api('GET', '/notifications'); } catch(e) { db.notifications = []; }
@@ -649,8 +649,8 @@ async function renderNotifications() {
   </tr>`).join('');
   if ($('#notifications-total')) $('#notifications-total').textContent = apiNotifs.length + ' notification' + (apiNotifs.length === 1 ? '' : 's');
 }
-function openNotificationModal() { if ($('#notif-customer')) $('#notif-customer').value = ''; if ($('#notif-type')) $('#notif-type').value = 'confirmation'; if ($('#notif-message')) $('#notif-message').value = ''; if ($('#notif-err')) $('#notif-err').textContent = ''; openModal('#notification-modal'); }
-function saveNotification() { const customer = $('#notif-customer').value.trim(), type = $('#notif-type').value, message = $('#notif-message').value.trim(); if (!customer || !message) { if ($('#notif-err')) $('#notif-err').textContent = 'Customer and message required.'; return; } db.notifications.unshift({ id: 'notif_' + (db.nextId.notification++), type, title: customer, message, is_read: false, created_at: new Date().toISOString() }); saveLocal(); closeModal('#notification-modal'); renderNotifications(); toast('Notification sent'); renderNotifBell(); }
+function openNotificationModal() { if ($('#notif-customer')) { const users = db.users || []; if (users.length) { $('#notif-customer').innerHTML = '<option value="">Select recipient...</option>' + users.map(u => '<option value="' + u.id + '">' + esc(u.email) + ' (' + esc(u.role) + ')</option>').join(''); } else { $('#notif-customer').innerHTML = '<option value="">No users found</option>'; } } if ($('#notif-type')) $('#notif-type').value = 'confirmation'; if ($('#notif-message')) $('#notif-message').value = ''; if ($('#notif-err')) $('#notif-err').textContent = ''; openModal('#notification-modal'); }
+async function saveNotification() { const userId = $('#notif-customer') ? $('#notif-customer').value : '', type = $('#notif-type').value, message = $('#notif-message').value.trim(); if (!userId || !message) { if ($('#notif-err')) $('#notif-err').textContent = 'Recipient and message required.'; return; } const recipient = (db.users || []).find(u => u.id === userId); const title = (recipient ? recipient.email : 'Notification'); try { await api('POST', '/notifications', { user_id: userId, type, title, message }); } catch(e) { db.notifications.unshift({ id: 'notif_' + (db.nextId.notification++), type, title, message, is_read: false, created_at: new Date().toISOString() }); saveLocal(); } closeModal('#notification-modal'); renderNotifications(); toast('Notification sent'); renderNotifBell(); }
 function deleteNotif(id) { db.notifications = (db.notifications || []).filter(n => String(n.id) !== String(id)); saveLocal(); renderNotifications(); toast('Notification deleted', true); renderNotifBell(); }
 
 // ─── Reviews (localStorage only) ─────────────────────────────

@@ -86,6 +86,33 @@ async def update_notification(
     return notif
 
 
+class NotificationCreate(BaseModel):
+    user_id: uuid.UUID
+    type: str
+    title: str
+    message: str
+
+
+@router.post("", response_model=NotificationOut, status_code=status.HTTP_201_CREATED)
+async def create_notification_endpoint(
+    payload: NotificationCreate,
+    db: AsyncSession = Depends(get_db),
+    principal: Principal = Depends(get_current_principal),
+):
+    """Send a notification to a specific user in the organization. Admin only."""
+    notif = Notification(
+        organization_id=principal.organization_id,
+        user_id=payload.user_id,
+        type=payload.type,
+        title=payload.title,
+        message=payload.message,
+    )
+    db.add(notif)
+    await db.commit()
+    await db.refresh(notif)
+    return notif
+
+
 @router.post("/read-all")
 async def mark_all_read(
     db: AsyncSession = Depends(get_db),
