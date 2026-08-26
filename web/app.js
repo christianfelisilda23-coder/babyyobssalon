@@ -383,20 +383,22 @@ function toggleSchedule(staffId, day) { const s = db.staff.find(x => x.id === st
 function openScheduleModal() {
   const sel = $('#sch-staff');
   if (sel) sel.innerHTML = db.staff.filter(s => s.status !== 'inactive').map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
-  if ($('#sch-day')) $('#sch-day').value = 'mon';
+  $$('#schedule-modal .sch-day-chip input').forEach(cb => cb.checked = cb.value !== 'sat' && cb.value !== 'sun');
   if ($('#sch-start')) $('#sch-start').value = '09:00';
   if ($('#sch-end')) $('#sch-end').value = '17:00';
   if ($('#sch-err')) $('#sch-err').textContent = '';
   openModal('#schedule-modal');
 }
 function saveSchedule() {
-  const staffId = $('#sch-staff').value, day = $('#sch-day').value, start = $('#sch-start').value, end = $('#sch-end').value;
+  const staffId = $('#sch-staff').value, start = $('#sch-start').value, end = $('#sch-end').value;
   if (!staffId || !start || !end) { if ($('#sch-err')) $('#sch-err').textContent = 'All fields required.'; return; }
+  const days = $$('#schedule-modal .sch-day-chip input:checked').map(cb => cb.value);
+  if (!days.length) { if ($('#sch-err')) $('#sch-err').textContent = 'Select at least one day.'; return; }
   const s = db.staff.find(x => x.id === staffId);
   if (!s) return;
   if (!s.schedule) s.schedule = {};
-  s.schedule[day] = { start, end };
-  saveLocal(); closeModal('#schedule-modal'); renderScheduling(); toast('Shift assigned');
+  days.forEach(d => { s.schedule[d] = { start, end }; });
+  saveLocal(); closeModal('#schedule-modal'); renderScheduling(); toast('Shift assigned to ' + days.length + ' day' + (days.length > 1 ? 's' : ''));
 }
 
 // ─── Billing ─────────────────────────────────────────────────

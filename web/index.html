@@ -363,16 +363,16 @@
           <div class="modal-body">
             <div class="field"><label>Staff member</label>
               <select id="sch-staff"></select></div>
-            <div class="field"><label>Day</label>
-              <select id="sch-day">
-                <option value="mon">Monday</option>
-                <option value="tue">Tuesday</option>
-                <option value="wed">Wednesday</option>
-                <option value="thu">Thursday</option>
-                <option value="fri">Friday</option>
-                <option value="sat">Saturday</option>
-                <option value="sun">Sunday</option>
-              </select></div>
+            <div class="field"><label>Days</label>
+              <div class="sch-days-grid">
+                <label class="sch-day-chip"><input type="checkbox" value="mon" checked> Mon</label>
+                <label class="sch-day-chip"><input type="checkbox" value="tue" checked> Tue</label>
+                <label class="sch-day-chip"><input type="checkbox" value="wed" checked> Wed</label>
+                <label class="sch-day-chip"><input type="checkbox" value="thu" checked> Thu</label>
+                <label class="sch-day-chip"><input type="checkbox" value="fri" checked> Fri</label>
+                <label class="sch-day-chip"><input type="checkbox" value="sat"> Sat</label>
+                <label class="sch-day-chip"><input type="checkbox" value="sun"> Sun</label>
+              </div></div>
             <div class="field-row">
               <div class="field"><label>Start time</label><input type="time" id="sch-start" value="09:00"></div>
               <div class="field"><label>End time</label><input type="time" id="sch-end" value="17:00"></div>
