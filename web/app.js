@@ -195,7 +195,13 @@ async function renderAppointments() {
     return true;
   }).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
   const info = pageSlice('appointments', src);
-  $('#appts-tbody').innerHTML = info.rows.map(a => `<tr><td class="cell-primary">${esc(a.date)}</td><td>${esc(a.time)}</td><td class="cell-primary">${esc(a.client)}</td><td>${esc(a.service)}</td><td>${esc(a.staff)}</td><td><span class="badge ${APPT_STATUS[a.status]?.badge || 'badge-gray'}"><span class="bdot"></span>${APPT_STATUS[a.status]?.label || a.status}</span></td><td>${money(a.price)}</td><td class="actions-cell"><div class="kebab-wrap"><button class="kebab-btn" onclick="toggleKebab(this)">&#8942;</button><div class="kebab-menu"><button data-act="checkin" data-id="${a.id}"><i class="ti ti-check"></i> Check in</button><button data-act="complete" data-id="${a.id}"><i class="ti ti-circle-check"></i> Complete</button><button data-act="cancel" data-id="${a.id}"><i class="ti ti-ban"></i> Cancel</button></div></div></td></tr>`).join('');
+  $('#appts-tbody').innerHTML = info.rows.map(a => {
+    let actions = '';
+    if (a.status === 'requested') actions = '<button data-act="confirm" data-id="'+a.id+'"><i class="ti ti-check"></i> Confirm</button><button data-act="cancel" data-id="'+a.id+'"><i class="ti ti-ban"></i> Cancel</button>';
+    else if (a.status === 'confirmed') actions = '<button data-act="checkin" data-id="'+a.id+'"><i class="ti ti-login"></i> Check in</button><button data-act="cancel" data-id="'+a.id+'"><i class="ti ti-ban"></i> Cancel</button>';
+    else if (a.status === 'in_progress') actions = '<button data-act="complete" data-id="'+a.id+'"><i class="ti ti-circle-check"></i> Complete</button><button data-act="cancel" data-id="'+a.id+'"><i class="ti ti-ban"></i> Cancel</button>';
+    return `<tr><td class="cell-primary">${esc(a.date)}</td><td>${esc(a.time)}</td><td class="cell-primary">${esc(a.client)}</td><td>${esc(a.service)}</td><td>${esc(a.staff)}</td><td><span class="badge ${APPT_STATUS[a.status]?.badge || 'badge-gray'}"><span class="bdot"></span>${APPT_STATUS[a.status]?.label || a.status}</span></td><td>${money(a.price)}</td><td class="actions-cell"><div class="kebab-wrap"><button class="kebab-btn" onclick="toggleKebab(this)">&#8942;</button><div class="kebab-menu">${actions}</div></div></td></tr>`;
+  }).join('');
   $('#appts-empty').style.display = info.total ? 'none' : 'block';
   $('#appts-pager').innerHTML = pagerHTML('appointments', info);
   $('#appts-total').textContent = info.total + ' appointment' + (info.total === 1 ? '' : 's');
@@ -245,9 +251,16 @@ async function saveAppointment() {
 }
 async function apptAction(act, id) {
   try {
-    if (act === 'complete') { await api('POST', '/appointments/' + id + '/complete'); }
-    else if (act === 'cancel') { await api('POST', '/appointments/' + id + '/status', { status: 'cancelled', cancellation_reason: 'Cancelled by user' }); }
-    else if (act === 'checkin') { await api('POST', '/appointments/' + id + '/status', { status: 'in_progress' }); }
+    const appt = db.appointments.find(a => a.id === id);
+    if (act === 'cancel') {
+      await api('POST', '/appointments/' + id + '/status', { status: 'cancelled', cancellation_reason: 'Cancelled by user' });
+    } else if (act === 'confirm') {
+      await api('POST', '/appointments/' + id + '/status', { status: 'confirmed' });
+    } else if (act === 'checkin') {
+      await api('POST', '/appointments/' + id + '/status', { status: 'in_progress' });
+    } else if (act === 'complete') {
+      await api('POST', '/appointments/' + id + '/complete');
+    }
     await loadAllData(); renderAppointments(); toast('Status updated');
   } catch(e) { toast(e.message, true); }
 }
@@ -628,7 +641,7 @@ document.addEventListener('click', e => {
   if (act) {
     const id = act.dataset.id;
     switch (act.dataset.act) {
-      case 'checkin': case 'complete': case 'cancel': apptAction(act.dataset.act, id); break;
+      case 'checkin': case 'complete': case 'cancel': case 'confirm': apptAction(act.dataset.act, id); break;
       case 'edit-client': openClientModal(id); break;
       case 'delete-client': deleteClient(id); break;
       case 'edit-staff': openStaffModal(id); break;
