@@ -36,6 +36,13 @@ class CreateUserRequest(BaseModel):
     display_name: str = Field(min_length=1, max_length=160)
 
 
+class ClientRegisterRequest(BaseModel):
+    full_name: str = Field(min_length=1, max_length=160)
+    email: EmailStr
+    password: str = Field(min_length=6)
+    phone: str | None = None
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID

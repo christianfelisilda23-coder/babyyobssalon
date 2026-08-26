@@ -101,8 +101,8 @@ function toast(m, e) { const el = $('#toast'); if (!el) return; el.textContent =
 
 const APPT_STATUS = { requested: { label: 'Requested', badge: 'badge-amber' }, confirmed: { label: 'Confirmed', badge: 'badge-blue' }, in_progress: { label: 'In Progress', badge: 'badge-emerald' }, completed: { label: 'Completed', badge: 'badge-gray' }, cancelled: { label: 'Cancelled', badge: 'badge-rose' }, no_show: { label: 'No Show', badge: 'badge-rose' } };
 const STAFF_STATUS = { active: { label: 'Active', badge: 'badge-emerald' }, inactive: { label: 'Inactive', badge: 'badge-rose' } };
-const ROLE_ACCESS = { admin: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], owner: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], staff: ['dashboard', 'appointments', 'billing'], front_desk: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], specialist: ['dashboard', 'appointments', 'billing'] };
-const ROLE_LABEL = { admin: 'Administrator', owner: 'Owner', staff: 'Staff', front_desk: 'Front Desk', specialist: 'Specialist' };
+const ROLE_ACCESS = { admin: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], owner: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], staff: ['dashboard', 'appointments', 'billing'], front_desk: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], specialist: ['dashboard', 'appointments', 'billing'], client: ['my-bookings', 'book-appointment'] };
+const ROLE_LABEL = { admin: 'Administrator', owner: 'Owner', staff: 'Staff', front_desk: 'Front Desk', specialist: 'Specialist', client: 'Customer' };
 function canAccess(page) { const u = currentUser(); return !!u && (ROLE_ACCESS[u.role] || []).includes(page); }
 function currentUser() { return tokenPayload ? { id: tokenPayload.userId, role: tokenPayload.role, email: '' } : null; }
 
@@ -112,13 +112,13 @@ function navigate(page) {
   if (!canAccess(page)) page = 'dashboard';
   currentPage = page;
   $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
-  ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'].forEach(p => { const el = $('#page-' + p); if (el) el.style.display = p === page ? 'block' : 'none'; });
+  ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings', 'my-bookings', 'book-appointment'].forEach(p => { const el = $('#page-' + p); if (el) el.style.display = p === page ? 'block' : 'none'; });
   closeAllKebabs(); render();
 }
 function render() {
   if ($('#nav-appts')) $('#nav-appts').textContent = db.appointments.filter(a => a.status !== 'cancelled' && a.status !== 'completed').length;
   if ($('#nav-lowstock')) $('#nav-lowstock').textContent = db.products.filter(p => p.stock <= p.lowStockThreshold).length;
-  const fn = { dashboard: renderDashboard, appointments: renderAppointments, clients: renderClients, staff: renderStaff, services: renderServices, inventory: renderInventory, scheduling: renderScheduling, billing: renderBilling, loyalty: renderLoyalty, reports: renderReports, notifications: renderNotifications, reviews: renderReviews, settings: renderSettings }[currentPage];
+  const fn = { dashboard: renderDashboard, appointments: renderAppointments, clients: renderClients, staff: renderStaff, services: renderServices, inventory: renderInventory, scheduling: renderScheduling, billing: renderBilling, loyalty: renderLoyalty, reports: renderReports, notifications: renderNotifications, reviews: renderReviews, settings: renderSettings, 'my-bookings': renderMyBookings, 'book-appointment': renderBookAppointment }[currentPage];
   if (fn) fn();
 }
 function renderSidebar(u) {
@@ -128,7 +128,8 @@ function renderSidebar(u) {
     { label: 'Management', items: [{ page: 'clients', icon: 'ti ti-users', label: 'Clients' }, { page: 'staff', icon: 'ti ti-user-circle', label: 'Staff' }, { page: 'services', icon: 'ti ti-scissors', label: 'Services' }, { page: 'inventory', icon: 'ti ti-package', label: 'Inventory', badge: 'nav-lowstock' }] },
     { label: 'Operations', items: [{ page: 'scheduling', icon: 'ti ti-calendar-month', label: 'Scheduling' }, { page: 'billing', icon: 'ti ti-receipt', label: 'Billing' }, { page: 'loyalty', icon: 'ti ti-award', label: 'Loyalty' }] },
     { label: 'Analytics', items: [{ page: 'reports', icon: 'ti ti-chart-bar', label: 'Reports' }, { page: 'notifications', icon: 'ti ti-bell', label: 'Notifications' }, { page: 'reviews', icon: 'ti ti-star', label: 'Reviews' }] },
-    { label: 'Admin', items: [{ page: 'settings', icon: 'ti ti-settings', label: 'Settings' }] }
+    { label: 'Admin', items: [{ page: 'settings', icon: 'ti ti-settings', label: 'Settings' }] },
+    { label: 'Customer', items: [{ page: 'my-bookings', icon: 'ti ti-calendar-check', label: 'My Bookings' }, { page: 'book-appointment', icon: 'ti ti-calendar-plus', label: 'Book Appointment' }] }
   ];
   $('#sidebar-nav').innerHTML = G.map(g => { const items = g.items.filter(i => allowed.includes(i.page)); if (!items.length) return ''; return `<div class="nav-section">${g.label}</div>` + items.map(i => `<a class="nav-item${i.page === currentPage ? ' active' : ''}" data-page="${i.page}" href="#"><i class="${i.icon}"></i> ${i.label}${i.badge ? ` <span class="badge-count" id="${i.badge}">0</span>` : ''}</a>`).join(''); }).join('');
 }
@@ -631,6 +632,24 @@ async function doRegister() {
   btn.disabled = false; btn.textContent = 'Create account';
 }
 
+async function doClientRegister() {
+  const name = ($('#cr-name') ? $('#cr-name').value.trim() : ''), phone = ($('#cr-phone') ? $('#cr-phone').value.trim() : ''), email = ($('#cr-email') ? $('#cr-email').value.trim() : ''), pass = ($('#cr-pass') ? $('#cr-pass').value : '');
+  if (!name || !email || !pass) { const errEl = $('#client-reg-err') || $('#login-err'); errEl.textContent = 'Name, email and password required.'; return; }
+  const btn = $('#client-reg-btn') || $('#login-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating...';
+  try {
+    const data = await api('POST', '/auth/client-register', { full_name: name, email, password: pass, phone: phone || null });
+    storeTokens(data.access_token, data.refresh_token);
+    tokenPayload = decodeToken(data.access_token);
+    await loadAllData();
+    setUserInfo({ email, role: 'client', name });
+    $('#login-overlay').classList.remove('open');
+    currentPage = 'my-bookings'; render();
+    toast('Account created! Welcome!');
+  } catch(e) { const errEl = $('#client-reg-err') || $('#login-err'); errEl.textContent = e.message || 'Registration failed'; }
+  btn.disabled = false; btn.textContent = 'Create Account';
+}
+
 function doLogout() { clearTokens(); session = null; setUserInfo(null); currentPage = 'dashboard'; showLogin(); toast('Signed out'); }
 
 // ─── Event Handlers ──────────────────────────────────────────
@@ -678,10 +697,23 @@ document.addEventListener('click', e => {
     loginTab.classList.add('active');
     const tab = loginTab.dataset.loginTab;
     const emailForm = $('#login-email-form');
-    const regForm = $('#register-form');
-    if (emailForm) emailForm.style.display = tab === 'email' ? 'flex' : 'none';
-    if (regForm) regForm.style.display = tab === 'register' ? 'flex' : 'none';
-    if (tab === 'email') { if (emailForm) emailForm.style.display = 'flex'; if (regForm) regForm.style.display = 'none'; }
+    const clientRegForm = $('#client-register-form');
+    const sub = $('#login-sub');
+    const hint = document.querySelector('.login-card .hint');
+    if (tab === 'staff') {
+      if (emailForm) { emailForm.style.display = 'flex'; emailForm.onsubmit = (e) => { e.preventDefault(); doLogin(); }; }
+      if (clientRegForm) clientRegForm.style.display = 'none';
+      if (sub) sub.textContent = 'Sign in to manage your salon';
+    } else if (tab === 'customer-signin') {
+      if (emailForm) { emailForm.style.display = 'flex'; emailForm.onsubmit = (e) => { e.preventDefault(); doLogin(); }; }
+      if (clientRegForm) clientRegForm.style.display = 'none';
+      if (sub) sub.textContent = 'Sign in to book appointments';
+    } else if (tab === 'customer-register') {
+      if (emailForm) emailForm.style.display = 'none';
+      if (clientRegForm) clientRegForm.style.display = 'flex';
+      if (sub) sub.textContent = 'Create a customer account';
+    }
+    if (hint) hint.style.display = tab === 'customer-register' ? 'none' : 'block';
     return;
   }
 });
@@ -704,6 +736,46 @@ document.addEventListener('input', e => {
 
 async function deleteUser(id) { try { await api('DELETE', '/auth/users/' + id); await loadAllData(); renderSettings(); toast('User deleted', true); } catch(e) { toast(e.message, true); } }
 
+// ─── Client: My Bookings ─────────────────────────────────────
+async function renderMyBookings() {
+  const me = currentUser(); if (!me) return;
+  const myAppts = db.appointments.filter(a => {
+    const cl = db.clients.find(c => c.id === a.clientId);
+    return cl && cl.name && tokenPayload && tokenPayload.userId;
+  });
+  const tbody = $('#mybookings-tbody');
+  if (tbody) tbody.innerHTML = myAppts.map(a => `<tr><td class="cell-primary">${esc(a.date)}</td><td>${esc(a.time)}</td><td>${esc(a.service)}</td><td>${esc(a.staff)}</td><td><span class="badge ${APPT_STATUS[a.status]?.badge || 'badge-gray'}"><span class="bdot"></span>${APPT_STATUS[a.status]?.label || a.status}</span></td><td>${money(a.price)}</td><td>${a.status === 'requested' || a.status === 'confirmed' ? '<button class="btn btn-sm btn-outline" onclick="cancelMyBooking(\'' + a.id + '\')"><i class="ti ti-ban"></i> Cancel</button>' : ''}</td></tr>`).join('');
+  if ($('#mybookings-empty')) $('#mybookings-empty').style.display = myAppts.length ? 'none' : 'block';
+  if ($('#mybookings-total')) $('#mybookings-total').textContent = myAppts.length + ' booking' + (myAppts.length === 1 ? '' : 's');
+}
+async function cancelMyBooking(id) {
+  try { await api('POST', '/appointments/' + id + '/status', { status: 'cancelled', cancellation_reason: 'Cancelled by customer' }); await loadAllData(); renderMyBookings(); toast('Booking cancelled'); } catch(e) { toast(e.message, true); }
+}
+
+// ─── Client: Book Appointment ─────────────────────────────────
+function renderBookAppointment() {
+  const svcSel = $('#bk-service'); const staffSel = $('#bk-staff');
+  if (svcSel) svcSel.innerHTML = '<option value="">Select a service...</option>' + db.services.map(s => `<option value="${s.id}">${esc(s.name)} — ${money(s.price)} (${s.duration} min)</option>`).join('');
+  if (staffSel) staffSel.innerHTML = '<option value="">Any available stylist</option>' + db.staff.filter(s => s.status === 'active').map(s => `<option value="${s.id}">${esc(s.name)} — ${esc(s.role)}</option>`).join('');
+  const today = todayISO();
+  if ($('#bk-date')) $('#bk-date').value = today;
+  if ($('#bk-date')) $('#bk-date').min = today;
+}
+async function submitBooking() {
+  const serviceId = $('#bk-service').value, staffId = $('#bk-staff').value, date = $('#bk-date').value, time = $('#bk-time').value;
+  if (!serviceId || !date || !time) { $('#bk-err').textContent = 'Please select a service, date and time.'; return; }
+  try {
+    const me = currentUser(); if (!me) { $('#bk-err').textContent = 'Not logged in'; return; }
+    let clientId = null;
+    const myClient = db.clients.find(c => c.email === (tokenPayload.email || ''));
+    if (myClient) clientId = myClient.id;
+    if (!clientId) { const c = await api('POST', '/clients', { full_name: tokenPayload.userId || 'Customer', phone: '', email: tokenPayload.email || null, notes: 'Created from booking' }); clientId = c.id; }
+    const payload = { client_id: clientId, staff_id: staffId || db.staff[0].id, service_id: serviceId, start_time: toISOWithTZ(date, time), discount_cents: 0 };
+    await api('POST', '/appointments', payload);
+    await loadAllData(); currentPage = 'my-bookings'; render(); toast('Appointment booked!');
+  } catch(e) { $('#bk-err').textContent = e.message; }
+}
+
 // ─── Init ────────────────────────────────────────────────────
 window.addEventListener('load', async () => {
   if (authToken) {
@@ -711,6 +783,7 @@ window.addEventListener('load', async () => {
     if (tokenPayload) {
       await loadAllData();
       setUserInfo({ email: tokenPayload.email || '', role: tokenPayload.role, name: '' });
+      currentPage = tokenPayload.role === 'client' ? 'my-bookings' : 'dashboard';
       render();
       return;
     }

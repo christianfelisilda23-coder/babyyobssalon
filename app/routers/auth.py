@@ -15,8 +15,9 @@ from app.core.security import (
     require_role,
     verify_password,
 )
-from app.models import Organization, PlatformUser, Staff
+from app.models import Organization, PlatformUser, Staff, Client
 from app.schemas.schemas import (
+    ClientRegisterRequest,
     CreateUserRequest,
     LoginRequest,
     RefreshRequest,
@@ -89,6 +90,42 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     ).scalar_one_or_none()
     if user is None or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+
+    return _token_pair(user)
+
+
+@router.post("/client-register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+async def client_register(payload: ClientRegisterRequest, db: AsyncSession = Depends(get_db)):
+    """Register a customer account (limited access — booking only)."""
+    existing = (
+        await db.execute(select(PlatformUser).where(PlatformUser.email == payload.email))
+    ).scalar_one_or_none()
+    if existing is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+
+    org = (await db.execute(select(Organization))).scalars().first()
+    if org is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No organization available")
+
+    user = PlatformUser(
+        id=uuid.uuid4(),
+        organization_id=org.id,
+        email=payload.email,
+        hashed_password=hash_password(payload.password),
+        role="client",
+    )
+    db.add(user)
+    await db.flush()
+
+    client = Client(
+        id=uuid.uuid4(),
+        organization_id=org.id,
+        full_name=payload.full_name,
+        phone=payload.phone,
+        email=payload.email,
+    )
+    db.add(client)
+    await db.commit()
 
     return _token_pair(user)
 

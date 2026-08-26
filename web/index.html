@@ -14,9 +14,11 @@
   <div class="login-card">
     <div class="logo"><i class="ti ti-flower"></i></div>
     <h2>Bloom Studio</h2>
-    <p class="sub">Sign in to manage your salon</p>
+    <p class="sub" id="login-sub">Sign in to manage your salon</p>
     <div class="tabs" id="login-tabs">
-      <button class="tab active" data-login-tab="email">Sign In</button>
+      <button class="tab active" data-login-tab="staff">Staff</button>
+      <button class="tab" data-login-tab="customer-signin">Customer</button>
+      <button class="tab" data-login-tab="customer-register">Sign Up</button>
     </div>
     <form onsubmit="event.preventDefault(); doLogin();" id="login-email-form" style="display:flex;flex-direction:column;gap:12px">
       <div class="field">
@@ -30,7 +32,27 @@
       <p class="login-err" id="login-err"></p>
       <button class="btn btn-primary" type="submit" id="login-btn">Sign in</button>
     </form>
-    <p class="hint" style="margin:12px 0 0; text-align:center">Admin: admin@salon.com / admin123 · Staff: staff@salon.com / staff123</p>
+    <form onsubmit="event.preventDefault(); doClientRegister();" id="client-register-form" style="display:none;flex-direction:column;gap:12px">
+      <div class="field">
+        <label>Full Name</label>
+        <input type="text" id="cr-name" placeholder="Your full name">
+      </div>
+      <div class="field">
+        <label>Phone</label>
+        <input type="text" id="cr-phone" placeholder="+63 9XX XXX XXXX">
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="cr-email" placeholder="you@email.com" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="cr-pass" placeholder="Min 6 characters">
+      </div>
+      <p class="login-err" id="client-reg-err"></p>
+      <button class="btn btn-primary" type="submit" id="client-reg-btn">Create Account</button>
+    </form>
+    <p class="hint" style="margin:12px 0 0; text-align:center">Staff: admin@salon.com / admin123 · staff@salon.com / staff123</p>
   </div>
 </div>
 
@@ -679,6 +701,58 @@
             </div>
           </div>
 
+        </div>
+      </section>
+
+      <!-- ============ Client: My Bookings ============ -->
+      <section id="page-my-bookings" style="display:none">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">My Bookings</h1>
+            <p class="page-sub" id="mybookings-total"></p>
+          </div>
+          <button class="btn btn-primary" onclick="navigate('book-appointment')"><i class="ti ti-plus"></i> Book Appointment</button>
+        </div>
+        <div class="panel">
+          <div class="table-scroll"><table>
+            <thead><tr><th>Date</th><th>Time</th><th>Service</th><th>Stylist</th><th>Status</th><th>Amount</th><th>Actions</th></tr></thead>
+            <tbody id="mybookings-tbody"></tbody>
+          </table></div>
+          <div class="empty-state" id="mybookings-empty" style="display:none">
+            <div class="icon"><i class="ti ti-calendar-plus"></i></div>
+            <h4>No bookings yet</h4>
+            <p>Book your first appointment to get started.</p>
+          </div>
+          <div class="mobile-list" id="mybookings-mobile"></div>
+        </div>
+      </section>
+
+      <!-- ============ Client: Book Appointment ============ -->
+      <section id="page-book-appointment" style="display:none">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Book Appointment</h1>
+            <p class="page-sub">Choose a service and time</p>
+          </div>
+        </div>
+        <div class="panel" style="max-width:600px">
+          <div class="modal-body">
+            <div class="field"><label>Service</label>
+              <select id="bk-service" style="width:100%;padding:8px 12px;background:#0F172A;border:1px solid #334155;color:#E2E8F0;border-radius:6px">
+                <option value="">Select a service...</option>
+              </select></div>
+            <div class="field"><label>Preferred Stylist</label>
+              <select id="bk-staff" style="width:100%;padding:8px 12px;background:#0F172A;border:1px solid #334155;color:#E2E8F0;border-radius:6px">
+                <option value="">Any available stylist</option>
+              </select></div>
+            <div class="field-row">
+              <div class="field"><label>Date</label><input type="date" id="bk-date"></div>
+              <div class="field"><label>Time</label><input type="time" id="bk-time"></div>
+            </div>
+            <div class="field"><label>Notes</label><textarea id="bk-notes" rows="3" placeholder="Any special requests..."></textarea></div>
+            <p class="modal-err" id="bk-err"></p>
+            <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="submitBooking()"><i class="ti ti-check"></i> Book Now</button>
+          </div>
         </div>
       </section>
 
