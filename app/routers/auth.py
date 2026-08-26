@@ -123,6 +123,8 @@ async def client_register(payload: ClientRegisterRequest, db: AsyncSession = Dep
         full_name=payload.full_name,
         phone=payload.phone,
         email=payload.email,
+        created_by=user.id,
+        updated_by=user.id,
     )
     db.add(client)
     await db.commit()
