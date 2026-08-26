@@ -34,6 +34,7 @@ from app.models.staff import (
     Staff,
     StaffService,
 )
+from app.models.notifications import Notification
 
 __all__ = [
     "Base",
@@ -62,4 +63,5 @@ __all__ = [
     "Payment",
     "Commission",
     "ServiceHistory",
+    "Notification",
 ]

@@ -8,6 +8,7 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
 from app.core.security import hash_password
+from sqlalchemy import text
 from app.models.parties import Organization, PlatformUser
 from app.models.staff import Staff
 from app.routers import (
@@ -15,6 +16,7 @@ from app.routers import (
     auth,
     categories,
     clients,
+    notifications,
     packages,
     payments,
     products,
@@ -59,11 +61,34 @@ app.include_router(walk_ins.router)
 app.include_router(products.router)
 app.include_router(payments.router)
 app.include_router(reports.router)
+app.include_router(notifications.router)
 
 
 @app.get("/health", tags=["health"])
 async def health():
     return {"status": "ok", "service": settings.app_name}
+
+
+@app.on_event("startup")
+async def ensure_notifications_table():
+    """Create notifications table if it doesn't exist (Render doesn't run alembic)."""
+    async with AsyncSessionLocal() as db:
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                organization_id UUID NOT NULL REFERENCES organizations(id),
+                user_id UUID NOT NULL,
+                appointment_id UUID REFERENCES appointments(id),
+                type VARCHAR(32) NOT NULL,
+                title VARCHAR(200) NOT NULL,
+                message TEXT NOT NULL,
+                is_read BOOLEAN NOT NULL DEFAULT false,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            )
+        """))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_notifications_org_user ON notifications(organization_id, user_id)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_notifications_org_user_read ON notifications(organization_id, user_id, is_read)"))
+        await db.commit()
 
 
 @app.on_event("startup")

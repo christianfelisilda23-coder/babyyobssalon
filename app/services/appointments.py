@@ -40,6 +40,7 @@ from app.models import (
     AppointmentStatus,
     Client,
     Commission,
+    PlatformUser,
     Product,
     ProductUsage,
     Service,
@@ -51,6 +52,7 @@ from app.models import (
     WalkInCustomer,
 )
 from app.schemas.schemas import AppointmentCreate
+from app.routers.notifications import create_notification
 
 ACTIVE_STATUSES = (
     AppointmentStatus.requested,
@@ -251,6 +253,28 @@ async def create_appointment(
         await db.commit()
         await db.refresh(appointment)
         await db.refresh(appointment, ["appointment_services"])
+
+        # Notify all admin/staff users about the new appointment request
+        admin_users = (await db.execute(
+            select(PlatformUser).where(
+                PlatformUser.organization_id == organization_id,
+                PlatformUser.role.in_(["admin", "staff"]),
+            )
+        )).scalars().all()
+        client_name = ""
+        if payload.client_id:
+            cl = (await db.execute(select(Client).where(Client.id == payload.client_id))).scalar_one_or_none()
+            if cl:
+                client_name = cl.full_name
+        svc_name = lines[0]["service_name"] if lines else "service"
+        for u in admin_users:
+            await create_notification(
+                db, organization_id, u.id, "appointment_request",
+                "New Appointment Request",
+                f"{client_name or 'A customer'} requested {svc_name} on {payload.start_time.strftime('%b %d, %Y at %I:%M %p')}.",
+                appointment_id=appointment.id,
+            )
+
         return appointment
 
     except IntegrityError as exc:
@@ -443,6 +467,25 @@ async def transition_status(
     await db.commit()
     await db.refresh(appointment)
     await db.refresh(appointment, ["appointment_services"])
+
+    # Notify the client about the status change
+    if appointment.client_id and new_status in (
+        AppointmentStatus.confirmed, AppointmentStatus.cancelled,
+        AppointmentStatus.in_progress, AppointmentStatus.completed,
+    ):
+        status_labels = {
+            AppointmentStatus.confirmed: ("Appointment Confirmed", "Your appointment has been confirmed."),
+            AppointmentStatus.cancelled: ("Appointment Cancelled", f"Your appointment has been cancelled.{(' Reason: ' + cancellation_reason) if cancellation_reason else ''}"),
+            AppointmentStatus.in_progress: ("Appointment In Progress", "Your appointment is now in progress."),
+            AppointmentStatus.completed: ("Appointment Completed", "Your appointment has been completed. Thank you!"),
+        }
+        title, message = status_labels[new_status]
+        await create_notification(
+            db, appointment.organization_id, appointment.client_id, f"appointment_{new_status.value}",
+            title, message, appointment_id=appointment.id,
+        )
+        await db.commit()
+
     return appointment
 
 
