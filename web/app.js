@@ -608,10 +608,10 @@ async function doLogin() {
     await loadAllData();
     setUserInfo({ email, role: tokenPayload.role, name: email.split('@')[0] });
     $('#login-overlay').classList.remove('open');
-    currentPage = 'dashboard'; render();
+    currentPage = tokenPayload.role === 'client' ? 'my-bookings' : 'dashboard'; render();
     toast('Welcome!');
   } catch(e) { $('#login-err').textContent = e.message || 'Login failed'; }
-  $('#login-btn').disabled = false; $('#login-btn').textContent = 'Sign in';
+  $('#login-btn').disabled = false; $('#login-btn').textContent = 'Login';
 }
 
 async function doRegister() {
@@ -699,21 +699,15 @@ document.addEventListener('click', e => {
     const emailForm = $('#login-email-form');
     const clientRegForm = $('#client-register-form');
     const sub = $('#login-sub');
-    const hint = document.querySelector('.login-card .hint');
-    if (tab === 'staff') {
-      if (emailForm) { emailForm.style.display = 'flex'; emailForm.onsubmit = (e) => { e.preventDefault(); doLogin(); }; }
+    if (tab === 'login') {
+      if (emailForm) emailForm.style.display = 'flex';
       if (clientRegForm) clientRegForm.style.display = 'none';
-      if (sub) sub.textContent = 'Sign in to manage your salon';
-    } else if (tab === 'customer-signin') {
-      if (emailForm) { emailForm.style.display = 'flex'; emailForm.onsubmit = (e) => { e.preventDefault(); doLogin(); }; }
-      if (clientRegForm) clientRegForm.style.display = 'none';
-      if (sub) sub.textContent = 'Sign in to book appointments';
-    } else if (tab === 'customer-register') {
+      if (sub) sub.textContent = 'Sign in to your account';
+    } else if (tab === 'signup') {
       if (emailForm) emailForm.style.display = 'none';
       if (clientRegForm) clientRegForm.style.display = 'flex';
       if (sub) sub.textContent = 'Create a customer account';
     }
-    if (hint) hint.style.display = tab === 'customer-register' ? 'none' : 'block';
     return;
   }
 });

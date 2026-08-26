@@ -14,23 +14,22 @@
   <div class="login-card">
     <div class="logo"><i class="ti ti-flower"></i></div>
     <h2>Bloom Studio</h2>
-    <p class="sub" id="login-sub">Sign in to manage your salon</p>
+    <p class="sub" id="login-sub">Sign in to your account</p>
     <div class="tabs" id="login-tabs">
-      <button class="tab active" data-login-tab="staff">Staff</button>
-      <button class="tab" data-login-tab="customer-signin">Customer</button>
-      <button class="tab" data-login-tab="customer-register">Sign Up</button>
+      <button class="tab active" data-login-tab="login">Login</button>
+      <button class="tab" data-login-tab="signup">Sign Up</button>
     </div>
     <form onsubmit="event.preventDefault(); doLogin();" id="login-email-form" style="display:flex;flex-direction:column;gap:12px">
       <div class="field">
         <label>Email</label>
-        <input type="email" id="login-email" placeholder="admin@salon.com" autocomplete="off">
+        <input type="email" id="login-email" placeholder="you@email.com" autocomplete="off">
       </div>
       <div class="field">
         <label>Password</label>
         <input type="password" id="login-pass" placeholder="••••••••">
       </div>
       <p class="login-err" id="login-err"></p>
-      <button class="btn btn-primary" type="submit" id="login-btn">Sign in</button>
+      <button class="btn btn-primary" type="submit" id="login-btn">Login</button>
     </form>
     <form onsubmit="event.preventDefault(); doClientRegister();" id="client-register-form" style="display:none;flex-direction:column;gap:12px">
       <div class="field">
@@ -52,7 +51,6 @@
       <p class="login-err" id="client-reg-err"></p>
       <button class="btn btn-primary" type="submit" id="client-reg-btn">Create Account</button>
     </form>
-    <p class="hint" style="margin:12px 0 0; text-align:center">Staff: admin@salon.com / admin123 · staff@salon.com / staff123</p>
   </div>
 </div>
 
