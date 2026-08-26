@@ -627,26 +627,31 @@ async function renderReports() {
 }
 
 // ─── Notifications ──────────────────────────────────────────
-function renderNotifications() {
+async function renderNotifications() {
+  if (!db.notifications || !db.notifications.length) {
+    try { db.notifications = await api('GET', '/notifications'); } catch(e) { db.notifications = db.notifications || []; }
+  }
   const apiNotifs = db.notifications || [];
   if (!apiNotifs.length) {
-    $('#notifications-tbody').innerHTML = `<tr><td class="cell-muted" colspan="4" style="text-align:center;padding:20px">No notifications yet</td></tr>`;
+    if ($('#notifications-tbody')) $('#notifications-tbody').innerHTML = `<tr><td class="cell-muted" colspan="6" style="text-align:center;padding:20px">No notifications yet</td></tr>`;
     if ($('#notifications-empty')) $('#notifications-empty').style.display = 'block';
+    if ($('#notifications-total')) $('#notifications-total').textContent = '0 notifications';
     return;
   }
   if ($('#notifications-empty')) $('#notifications-empty').style.display = 'none';
-  $('#notifications-tbody').innerHTML = apiNotifs.map(n => `<tr>
-    <td><span class="badge ${n.is_read ? 'badge-gray' : 'badge-blue'}"><span class="bdot"></span>${esc(n.type)}</span></td>
-    <td class="cell-primary">${esc(n.title)}</td>
+  if ($('#notifications-tbody')) $('#notifications-tbody').innerHTML = apiNotifs.map(n => `<tr>
+    <td><span class="badge ${n.is_read ? 'badge-gray' : 'badge-blue'}"><span class="bdot"></span>${n.is_read ? 'Read' : 'Unread'}</span></td>
+    <td><span class="badge badge-amber"><span class="bdot"></span>${esc(n.type || 'info')}</span></td>
+    <td class="cell-primary">${esc(n.title || 'Notification')}</td>
     <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.message)}</td>
-    <td>${timeAgo(n.created_at)}</td>
+    <td>${timeAgo(n.created_at || n.date)}</td>
+    <td class="actions-cell"><div class="kebab-wrap"><button class="kebab-btn" onclick="toggleKebab(this)">&#8942;</button><div class="kebab-menu"><button data-act="toggle-notif-read" data-id="${n.id}"><i class="ti ti-${n.is_read ? 'eye-off' : 'eye'}"></i> Mark ${n.is_read ? 'unread' : 'read'}</button><button class="danger" data-act="delete-notif" data-id="${n.id}"><i class="ti ti-trash"></i> Delete</button></div></div></td>
   </tr>`).join('');
   if ($('#notifications-total')) $('#notifications-total').textContent = apiNotifs.length + ' notification' + (apiNotifs.length === 1 ? '' : 's');
 }
-function openNotificationModal() { if ($('#notif-customer')) $('#notif-customer').value = ''; if ($('#notif-type')) $('#notif-type').value = 'confirmation'; if ($('#notif-message')) $('#notif-message').value = ''; openModal('#notification-modal'); }
-function saveNotification() { const customer = $('#notif-customer').value.trim(), type = $('#notif-type').value, message = $('#notif-message').value.trim(); if (!customer || !message) { if ($('#notif-err')) $('#notif-err').textContent = 'Customer and message required.'; return; } db.notifications.push({ id: 'notif_' + (db.nextId.notification++), customer, type, message, status: 'pending', date: todayISO() }); saveLocal(); closeModal('#notification-modal'); renderNotifications(); toast('Notification created'); }
-function markNotifSent(id) { const n = db.notifications.find(x => x.id === id); if (n) { n.status = 'sent'; saveLocal(); renderNotifications(); toast('Notification sent'); } }
-function deleteNotif(id) { db.notifications = db.notifications.filter(n => n.id !== id); saveLocal(); renderNotifications(); toast('Notification deleted', true); }
+function openNotificationModal() { if ($('#notif-customer')) $('#notif-customer').value = ''; if ($('#notif-type')) $('#notif-type').value = 'confirmation'; if ($('#notif-message')) $('#notif-message').value = ''; if ($('#notif-err')) $('#notif-err').textContent = ''; openModal('#notification-modal'); }
+function saveNotification() { const customer = $('#notif-customer').value.trim(), type = $('#notif-type').value, message = $('#notif-message').value.trim(); if (!customer || !message) { if ($('#notif-err')) $('#notif-err').textContent = 'Customer and message required.'; return; } db.notifications.unshift({ id: 'notif_' + (db.nextId.notification++), type, title: customer, message, is_read: false, created_at: new Date().toISOString() }); saveLocal(); closeModal('#notification-modal'); renderNotifications(); toast('Notification sent'); renderNotifBell(); }
+function deleteNotif(id) { db.notifications = (db.notifications || []).filter(n => String(n.id) !== String(id)); saveLocal(); renderNotifications(); toast('Notification deleted', true); renderNotifBell(); }
 
 // ─── Reviews (localStorage only) ─────────────────────────────
 function renderReviews() {
@@ -761,7 +766,7 @@ document.addEventListener('click', e => {
       case 'toggle-promo': togglePromo(id); break;
       case 'delete-promo': deletePromo(id); break;
       case 'edit-loyalty': openLoyaltyModal(id); break;
-      case 'mark-sent': markNotifSent(id); break;
+      case 'toggle-notif-read': { const n = (db.notifications || []).find(x => String(x.id) === String(id)); if (n) { n.is_read = !n.is_read; saveLocal(); renderNotifications(); renderNotifBell(); toast(n.is_read ? 'Marked as read' : 'Marked as unread'); } break; }
       case 'delete-notif': deleteNotif(id); break;
       case 'respond-review': openReviewModal(id); break;
       case 'delete-review': deleteReview(id); break;

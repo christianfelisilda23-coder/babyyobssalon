@@ -623,11 +623,15 @@
             <h1 class="page-title">Notifications</h1>
             <p class="page-sub" id="notifications-total"></p>
           </div>
+          <div class="page-actions">
+            <button class="btn btn-secondary btn-sm" onclick="markAllRead()"><i class="ti ti-checks"></i> Mark all read</button>
+            <button class="btn btn-primary btn-sm" onclick="openNotificationModal()"><i class="ti ti-plus"></i> Compose</button>
+          </div>
         </div>
 
         <div class="panel">
           <div class="table-scroll"><table>
-            <thead><tr><th>Type</th><th>Title</th><th>Message</th><th>When</th></tr></thead>
+            <thead><tr><th>Status</th><th>Type</th><th>Title</th><th>Message</th><th>When</th><th>Actions</th></tr></thead>
             <tbody id="notifications-tbody"></tbody>
           </table></div>
           <div class="empty-state" id="notifications-empty" style="display:none">
