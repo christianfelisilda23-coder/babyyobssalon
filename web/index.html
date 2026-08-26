@@ -355,6 +355,37 @@
         </div>
       </section>
 
+      <!-- ============ Schedule Modal ============ -->
+      <div class="modal-backdrop" id="schedule-modal">
+        <div class="modal">
+          <div class="modal-head"><h3>Assign Shift</h3>
+            <button data-close="schedule-modal">✕</button></div>
+          <div class="modal-body">
+            <div class="field"><label>Staff member</label>
+              <select id="sch-staff"></select></div>
+            <div class="field"><label>Day</label>
+              <select id="sch-day">
+                <option value="mon">Monday</option>
+                <option value="tue">Tuesday</option>
+                <option value="wed">Wednesday</option>
+                <option value="thu">Thursday</option>
+                <option value="fri">Friday</option>
+                <option value="sat">Saturday</option>
+                <option value="sun">Sunday</option>
+              </select></div>
+            <div class="field-row">
+              <div class="field"><label>Start time</label><input type="time" id="sch-start" value="09:00"></div>
+              <div class="field"><label>End time</label><input type="time" id="sch-end" value="17:00"></div>
+            </div>
+            <p class="modal-err" id="sch-err"></p>
+          </div>
+          <div class="modal-foot">
+            <button class="btn btn-secondary" data-close="schedule-modal">Cancel</button>
+            <button class="btn btn-primary" onclick="saveSchedule()">Save Shift</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ============ Billing / POS ============ -->
       <section id="page-billing" style="display:none">
         <div class="page-header">

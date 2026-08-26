@@ -379,7 +379,25 @@ function renderScheduling() {
     return `<tr><td><div style="display:flex;align-items:center;gap:10px"><div class="avatar" style="width:28px;height:28px;font-size:10px">${esc(s.initials)}</div><span class="cell-primary">${esc(s.name)}</span></div></td>${cells}</tr>`;
   }).join('');
 }
-function toggleSchedule(staffId, day) { const s = db.staff.find(x => x.id === staffId); if (!s) return; if (!s.schedule) s.schedule = {}; if (s.schedule[day]) { delete s.schedule[day]; } else { s.schedule[day] = { start: '09:00', end: '17:00' }; } renderScheduling(); }
+function toggleSchedule(staffId, day) { const s = db.staff.find(x => x.id === staffId); if (!s) return; if (!s.schedule) s.schedule = {}; if (s.schedule[day]) { delete s.schedule[day]; } else { s.schedule[day] = { start: '09:00', end: '17:00' }; } saveLocal(); renderScheduling(); }
+function openScheduleModal() {
+  const sel = $('#sch-staff');
+  if (sel) sel.innerHTML = db.staff.filter(s => s.status !== 'inactive').map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  if ($('#sch-day')) $('#sch-day').value = 'mon';
+  if ($('#sch-start')) $('#sch-start').value = '09:00';
+  if ($('#sch-end')) $('#sch-end').value = '17:00';
+  if ($('#sch-err')) $('#sch-err').textContent = '';
+  openModal('#schedule-modal');
+}
+function saveSchedule() {
+  const staffId = $('#sch-staff').value, day = $('#sch-day').value, start = $('#sch-start').value, end = $('#sch-end').value;
+  if (!staffId || !start || !end) { if ($('#sch-err')) $('#sch-err').textContent = 'All fields required.'; return; }
+  const s = db.staff.find(x => x.id === staffId);
+  if (!s) return;
+  if (!s.schedule) s.schedule = {};
+  s.schedule[day] = { start, end };
+  saveLocal(); closeModal('#schedule-modal'); renderScheduling(); toast('Shift assigned');
+}
 
 // ─── Billing ─────────────────────────────────────────────────
 let billingItems = [];
