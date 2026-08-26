@@ -57,6 +57,7 @@
 <!-- ================= Shell ================= -->
 <div class="shell">
 
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('open')"></div>
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
       <div class="mark"><i class="ti ti-flower"></i></div>
@@ -69,7 +70,10 @@
 
   <div class="main">
     <header class="topbar">
-      <div class="org-pill"><span class="dot">B</span><span>Bloom Studio · Quezon City</span></div>
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburger-btn" onclick="document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('open')"><i class="ti ti-menu-2"></i></button>
+        <div class="org-pill"><span class="dot">B</span><span>Bloom Studio · Quezon City</span></div>
+      </div>
       <div class="topbar-right">
         <div style="text-align:right">
           <div style="font-size:13px;color:#E2E8F0;font-weight:600" id="user-email"></div>
