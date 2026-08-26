@@ -497,6 +497,9 @@ async function processPayment() {
       try { await api('POST', '/products/usage', { appointment_id: appt.id, product_id: p.productId, quantity: p.qty }); } catch(e) { console.warn('Product usage failed:', e); }
     }
 
+    try { await api('PATCH', '/appointments/' + appt.id + '/status', { status: 'confirmed' }); } catch(e) { console.warn('Confirm failed:', e); }
+    try { await api('PATCH', '/appointments/' + appt.id + '/status', { status: 'in_progress' }); } catch(e) { console.warn('Start failed:', e); }
+
     await api('POST', '/payments', { appointment_id: appt.id, amount_cents: pesoToCents(total), method: billingPaymentMethod, status: 'paid', discount_cents: pesoToCents(discount) });
 
     try { await api('POST', '/appointments/' + appt.id + '/complete'); } catch(e) { console.warn('Complete failed:', e); }
@@ -504,6 +507,7 @@ async function processPayment() {
     billingItems = [];
     if ($('#billing-customer')) $('#billing-customer').value = '';
     if ($('#billing-discount')) $('#billing-discount').value = 0;
+    db.transactions.push({ id: appt.id, customer: customerName || 'Walk-in', date: dateStr, amount: total, method: billingPaymentMethod });
     await loadAllData();
     renderBilling();
     toast('Payment processed! ' + money(total));

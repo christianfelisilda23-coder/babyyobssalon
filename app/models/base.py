@@ -25,6 +25,7 @@ class PaymentMethod(str, enum.Enum):
     cash = "cash"
     card = "card"
     ewallet = "ewallet"
+    bank_transfer = "bank_transfer"
 
 
 class PaymentStatus(str, enum.Enum):
