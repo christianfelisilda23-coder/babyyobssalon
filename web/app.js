@@ -49,7 +49,7 @@ try { session = JSON.parse(localStorage.getItem(SESSION_KEY)) || null; } catch(e
 async function loadAllData() {
   try {
     const [clients, staff, services, products, appointments, payments] = await Promise.all([
-      api('GET', '/clients?limit=500').catch(() => []),
+      api('GET', '/clients').catch(() => []),
       api('GET', '/staff?active_only=false').catch(() => []),
       api('GET', '/services?active_only=false').catch(() => []),
       api('GET', '/products?active_only=false').catch(() => []),
