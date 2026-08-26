@@ -216,12 +216,12 @@ async function openApptModal(id) {
   const a = id ? db.appointments.find(x => x.id === id) : null;
   $('#appt-modal-title').textContent = a ? 'Edit appointment' : 'New appointment';
   $('#f-date').value = a ? a.date : todayISO(); $('#f-time').value = a ? a.time : '10:00';
-  $('#f-client').innerHTML = clientOptions(); $('#f-client').value = a ? a.client : '';
-  $('#f-service').innerHTML = serviceOptions(); $('#f-service').value = a ? a.service : '';
-  $('#f-staff').innerHTML = staffOptions(); $('#f-staff').value = a ? a.staff : '';
+  $('#clients-list').innerHTML = clientOptions(); $('#f-client').value = a ? a.client : '';
+  $('#services-list').innerHTML = serviceOptions(); $('#f-service').value = a ? a.service : '';
+  $('#staff-list').innerHTML = staffOptions(); $('#f-staff').value = a ? a.staff : '';
   const svc = a ? db.services.find(s => s.name === a.service) : null;
   $('#f-price').value = a ? a.price : (svc ? svc.price : '');
-  $('#f-status').value = a ? a.status : 'confirmed';
+  $('#f-status').value = a ? a.status : 'requested';
   openModal('#appt-modal');
 }
 async function saveAppointment() {
