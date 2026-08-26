@@ -10,7 +10,7 @@ let authToken = localStorage.getItem('salon_token');
 let refreshToken = localStorage.getItem('salon_refresh_token');
 let tokenPayload = null;
 
-function decodeToken(t) { try { const p = JSON.parse(atob(t.split('.')[1])); return { userId: p.user_id, orgId: p.organization_id, role: p.role }; } catch(e) { return null; } }
+function decodeToken(t) { try { const p = JSON.parse(atob(t.split('.')[1])); return { userId: p.user_id, orgId: p.organization_id, role: p.role, email: p.email || '' }; } catch(e) { return null; } }
 function storeTokens(a, r) { authToken = a; refreshToken = r; localStorage.setItem('salon_token', a); localStorage.setItem('salon_refresh_token', r); tokenPayload = decodeToken(a); }
 function clearTokens() { authToken = refreshToken = tokenPayload = null; localStorage.removeItem('salon_token'); localStorage.removeItem('salon_refresh_token'); }
 
@@ -106,7 +106,7 @@ const STAFF_STATUS = { active: { label: 'Active', badge: 'badge-emerald' }, inac
 const ROLE_ACCESS = { admin: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], owner: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], staff: ['dashboard', 'appointments', 'billing'], front_desk: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], specialist: ['dashboard', 'appointments', 'billing'],   client: ['my-bookings', 'book-appointment', 'notifications'] };
 const ROLE_LABEL = { admin: 'Administrator', owner: 'Owner', staff: 'Staff', front_desk: 'Front Desk', specialist: 'Specialist', client: 'Customer' };
 function canAccess(page) { const u = currentUser(); return !!u && (ROLE_ACCESS[u.role] || []).includes(page); }
-function currentUser() { return tokenPayload ? { id: tokenPayload.userId, role: tokenPayload.role, email: '' } : null; }
+function currentUser() { return tokenPayload ? { id: tokenPayload.userId, role: tokenPayload.role, email: tokenPayload.email || '' } : null; }
 
 // ─── Navigation ──────────────────────────────────────────────
 let currentPage = 'dashboard';

@@ -44,19 +44,20 @@ def verify_password(raw: str, hashed: str) -> bool:
     return bcrypt.checkpw(raw.encode("utf-8"), hashed.encode("utf-8"))
 
 
-def create_access_token(organization_id: UUID, user_id: UUID, role: str = "staff") -> str:
+def create_access_token(organization_id: UUID, user_id: UUID, role: str = "staff", email: str | None = None) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
     payload = {
         "organization_id": str(organization_id),
         "user_id": str(user_id),
         "role": role,
+        "email": email or "",
         "type": "access",
         "exp": expire,
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-def create_refresh_token(organization_id: UUID, user_id: UUID, role: str = "staff") -> str:
+def create_refresh_token(organization_id: UUID, user_id: UUID, role: str = "staff", email: str | None = None) -> str:
     """Stateless refresh token, distinct type claim + longer expiry. The
     caller is expected to rotate it (the refresh endpoint mints a new pair)."""
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_refresh_expire_minutes)
@@ -64,6 +65,7 @@ def create_refresh_token(organization_id: UUID, user_id: UUID, role: str = "staf
         "organization_id": str(organization_id),
         "user_id": str(user_id),
         "role": role,
+        "email": email or "",
         "type": "refresh",
         "exp": expire,
     }

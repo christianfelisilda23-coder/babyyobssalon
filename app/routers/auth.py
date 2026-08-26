@@ -32,10 +32,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def _token_pair(user: PlatformUser) -> TokenResponse:
     return TokenResponse(
         access_token=create_access_token(
-            organization_id=user.organization_id, user_id=user.id, role=user.role
+            organization_id=user.organization_id, user_id=user.id, role=user.role, email=user.email
         ),
         refresh_token=create_refresh_token(
-            organization_id=user.organization_id, user_id=user.id, role=user.role
+            organization_id=user.organization_id, user_id=user.id, role=user.role, email=user.email
         ),
     )
 
