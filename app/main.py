@@ -8,7 +8,8 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
 from app.core.security import hash_password
-from app.models.parties import Organization, PlatformUser, Staff
+from app.models.parties import Organization, PlatformUser
+from app.models.staff import Staff
 from app.routers import (
     appointments,
     auth,
