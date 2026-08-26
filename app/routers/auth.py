@@ -15,7 +15,7 @@ from app.core.security import (
     require_role,
     verify_password,
 )
-from app.models import Organization, PlatformUser, Staff, Client
+from app.models import Organization, PlatformUser, Staff, Client, Service
 from app.schemas.schemas import (
     ClientRegisterRequest,
     CreateUserRequest,
@@ -105,8 +105,7 @@ async def client_register(payload: ClientRegisterRequest, db: AsyncSession = Dep
 
     org = (await db.execute(
         select(Organization)
-        .join(PlatformUser, PlatformUser.organization_id == Organization.id)
-        .where(PlatformUser.role.in_(["admin", "staff"]))
+        .join(Service, Service.organization_id == Organization.id)
         .limit(1)
     )).scalars().first()
     if org is None:
