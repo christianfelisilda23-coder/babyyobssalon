@@ -79,6 +79,8 @@ async function loadAllData() {
     if (tokenPayload && tokenPayload.role === 'admin') {
       try { db.users = await api('GET', '/auth/users'); } catch(e) { db.users = []; }
     }
+    try { db.notifications = await api('GET', '/notifications'); } catch(e) { db.notifications = []; }
+    renderNotifBell();
   } catch(e) { console.error('Load failed:', e); toast('Failed to connect to server', true); }
 }
 
@@ -101,7 +103,7 @@ function toast(m, e) { const el = $('#toast'); if (!el) return; el.textContent =
 
 const APPT_STATUS = { requested: { label: 'Requested', badge: 'badge-amber' }, confirmed: { label: 'Confirmed', badge: 'badge-blue' }, in_progress: { label: 'In Progress', badge: 'badge-emerald' }, completed: { label: 'Completed', badge: 'badge-gray' }, cancelled: { label: 'Cancelled', badge: 'badge-rose' }, no_show: { label: 'No Show', badge: 'badge-rose' } };
 const STAFF_STATUS = { active: { label: 'Active', badge: 'badge-emerald' }, inactive: { label: 'Inactive', badge: 'badge-rose' } };
-const ROLE_ACCESS = { admin: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], owner: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], staff: ['dashboard', 'appointments', 'billing'], front_desk: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], specialist: ['dashboard', 'appointments', 'billing'], client: ['my-bookings', 'book-appointment'] };
+const ROLE_ACCESS = { admin: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], owner: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], staff: ['dashboard', 'appointments', 'billing'], front_desk: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], specialist: ['dashboard', 'appointments', 'billing'],   client: ['my-bookings', 'book-appointment', 'notifications'] };
 const ROLE_LABEL = { admin: 'Administrator', owner: 'Owner', staff: 'Staff', front_desk: 'Front Desk', specialist: 'Specialist', client: 'Customer' };
 function canAccess(page) { const u = currentUser(); return !!u && (ROLE_ACCESS[u.role] || []).includes(page); }
 function currentUser() { return tokenPayload ? { id: tokenPayload.userId, role: tokenPayload.role, email: '' } : null; }
@@ -129,7 +131,7 @@ function renderSidebar(u) {
     { label: 'Operations', items: [{ page: 'scheduling', icon: 'ti ti-calendar-month', label: 'Scheduling' }, { page: 'billing', icon: 'ti ti-receipt', label: 'Billing' }, { page: 'loyalty', icon: 'ti ti-award', label: 'Loyalty' }] },
     { label: 'Analytics', items: [{ page: 'reports', icon: 'ti ti-chart-bar', label: 'Reports' }, { page: 'notifications', icon: 'ti ti-bell', label: 'Notifications' }, { page: 'reviews', icon: 'ti ti-star', label: 'Reviews' }] },
     { label: 'Admin', items: [{ page: 'settings', icon: 'ti ti-settings', label: 'Settings' }] },
-    { label: 'Customer', items: [{ page: 'my-bookings', icon: 'ti ti-calendar-check', label: 'My Bookings' }, { page: 'book-appointment', icon: 'ti ti-calendar-plus', label: 'Book Appointment' }] }
+    { label: 'Customer', items: [{ page: 'my-bookings', icon: 'ti ti-calendar-check', label: 'My Appointments' }, { page: 'book-appointment', icon: 'ti ti-calendar-plus', label: 'Book Appointment' }, { page: 'notifications', icon: 'ti ti-bell', label: 'Notifications' }] }
   ];
   $('#sidebar-nav').innerHTML = G.map(g => { const items = g.items.filter(i => allowed.includes(i.page)); if (!items.length) return ''; return `<div class="nav-section">${g.label}</div>` + items.map(i => `<a class="nav-item${i.page === currentPage ? ' active' : ''}" data-page="${i.page}" href="#"><i class="${i.icon}"></i> ${i.label}${i.badge ? ` <span class="badge-count" id="${i.badge}">0</span>` : ''}</a>`).join(''); }).join('');
 }
@@ -198,9 +200,9 @@ async function renderAppointments() {
   const info = pageSlice('appointments', src);
   $('#appts-tbody').innerHTML = info.rows.map(a => {
     let actions = '';
-    if (a.status === 'requested') actions = '<button data-act="confirm" data-id="'+a.id+'"><i class="ti ti-check"></i> Confirm</button><button data-act="cancel" data-id="'+a.id+'"><i class="ti ti-ban"></i> Cancel</button>';
-    else if (a.status === 'confirmed') actions = '<button data-act="checkin" data-id="'+a.id+'"><i class="ti ti-login"></i> Check in</button><button data-act="cancel" data-id="'+a.id+'"><i class="ti ti-ban"></i> Cancel</button>';
-    else if (a.status === 'in_progress') actions = '<button data-act="complete" data-id="'+a.id+'"><i class="ti ti-circle-check"></i> Complete</button><button data-act="cancel" data-id="'+a.id+'"><i class="ti ti-ban"></i> Cancel</button>';
+    if (a.status === 'requested') actions = '<button class="btn btn-sm btn-primary" style="margin-right:4px" data-act="confirm" data-id="'+a.id+'"><i class="ti ti-check"></i> Approve</button><button class="btn btn-sm btn-delete" data-act="cancel" data-id="'+a.id+'"><i class="ti ti-x"></i> Decline</button>';
+    else if (a.status === 'confirmed') actions = '<button class="btn btn-sm btn-outline" style="margin-right:4px" data-act="checkin" data-id="'+a.id+'"><i class="ti ti-login"></i> Check in</button><button class="btn btn-sm btn-delete" data-act="cancel" data-id="'+a.id+'"><i class="ti ti-x"></i> Cancel</button>';
+    else if (a.status === 'in_progress') actions = '<button class="btn btn-sm btn-primary" style="margin-right:4px" data-act="complete" data-id="'+a.id+'"><i class="ti ti-circle-check"></i> Complete</button><button class="btn btn-sm btn-delete" data-act="cancel" data-id="'+a.id+'"><i class="ti ti-x"></i> Cancel</button>';
     return `<tr><td class="cell-primary">${esc(a.date)}</td><td>${esc(a.time)}</td><td class="cell-primary">${esc(a.client)}</td><td>${esc(a.service)}</td><td>${esc(a.staff)}</td><td><span class="badge ${APPT_STATUS[a.status]?.badge || 'badge-gray'}"><span class="bdot"></span>${APPT_STATUS[a.status]?.label || a.status}</span></td><td>${money(a.price)}</td><td class="actions-cell"><div class="kebab-wrap"><button class="kebab-btn" onclick="toggleKebab(this)">&#8942;</button><div class="kebab-menu">${actions}</div></div></td></tr>`;
   }).join('');
   $('#appts-empty').style.display = info.total ? 'none' : 'block';
@@ -554,9 +556,22 @@ async function renderReports() {
   } catch(e) { console.error('Reports error:', e); }
 }
 
-// ─── Notifications (localStorage only) ───────────────────────
+// ─── Notifications ──────────────────────────────────────────
 function renderNotifications() {
-  $('#notifications-tbody').innerHTML = db.notifications.map(n => `<tr><td class="cell-primary">${esc(n.customer)}</td><td><span class="badge badge-blue"><span class="bdot"></span>${esc(n.type)}</span></td><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.message)}</td><td><span class="badge ${n.status === 'sent' ? 'badge-emerald' : 'badge-amber'}"><span class="bdot"></span>${n.status}</span></td><td>${esc(n.date)}</td><td class="actions-cell"><div class="kebab-wrap"><button class="kebab-btn" onclick="toggleKebab(this)">&#8942;</button><div class="kebab-menu">${n.status === 'pending' ? `<button data-act="mark-sent" data-id="${n.id}"><i class="ti ti-send"></i> Mark Sent</button>` : ''}<button class="danger" data-act="delete-notif" data-id="${n.id}"><i class="ti ti-trash"></i> Delete</button></div></div></td></tr>`).join('') || `<tr><td class="cell-muted" colspan="6" style="text-align:center;padding:20px">No notifications yet</td></tr>`;
+  const apiNotifs = db.notifications || [];
+  if (!apiNotifs.length) {
+    $('#notifications-tbody').innerHTML = `<tr><td class="cell-muted" colspan="4" style="text-align:center;padding:20px">No notifications yet</td></tr>`;
+    if ($('#notifications-empty')) $('#notifications-empty').style.display = 'block';
+    return;
+  }
+  if ($('#notifications-empty')) $('#notifications-empty').style.display = 'none';
+  $('#notifications-tbody').innerHTML = apiNotifs.map(n => `<tr>
+    <td><span class="badge ${n.is_read ? 'badge-gray' : 'badge-blue'}"><span class="bdot"></span>${esc(n.type)}</span></td>
+    <td class="cell-primary">${esc(n.title)}</td>
+    <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.message)}</td>
+    <td>${timeAgo(n.created_at)}</td>
+  </tr>`).join('');
+  if ($('#notifications-total')) $('#notifications-total').textContent = apiNotifs.length + ' notification' + (apiNotifs.length === 1 ? '' : 's');
 }
 function openNotificationModal() { if ($('#notif-customer')) $('#notif-customer').value = ''; if ($('#notif-type')) $('#notif-type').value = 'confirmation'; if ($('#notif-message')) $('#notif-message').value = ''; openModal('#notification-modal'); }
 function saveNotification() { const customer = $('#notif-customer').value.trim(), type = $('#notif-type').value, message = $('#notif-message').value.trim(); if (!customer || !message) { if ($('#notif-err')) $('#notif-err').textContent = 'Customer and message required.'; return; } db.notifications.push({ id: 'notif_' + (db.nextId.notification++), customer, type, message, status: 'pending', date: todayISO() }); saveLocal(); closeModal('#notification-modal'); renderNotifications(); toast('Notification created'); }
@@ -729,6 +744,33 @@ document.addEventListener('input', e => {
 });
 
 async function deleteUser(id) { try { await api('DELETE', '/auth/users/' + id); await loadAllData(); renderSettings(); toast('User deleted', true); } catch(e) { toast(e.message, true); } }
+
+// ─── Notifications Bell ──────────────────────────────────────
+function renderNotifBell() {
+  const unread = (db.notifications || []).filter(n => !n.is_read).length;
+  const badge = $('#notif-badge');
+  if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'flex' : 'none'; }
+  const list = $('#notif-dd-list');
+  if (list) {
+    if (!db.notifications || !db.notifications.length) { list.innerHTML = '<div class="notif-dd-empty">No notifications yet</div>'; return; }
+    list.innerHTML = db.notifications.slice(0, 20).map(n => `
+      <div class="notif-dd-item${n.is_read ? '' : ' unread'}" onclick="readNotif('${n.id}')">
+        <div class="notif-dd-item-title">${esc(n.title)}</div>
+        <div class="notif-dd-item-msg">${esc(n.message)}</div>
+        <div class="notif-dd-item-time">${timeAgo(n.created_at)}</div>
+      </div>`).join('');
+  }
+}
+function toggleNotifDropdown() { const dd = $('#notif-dropdown'); if (dd) dd.classList.toggle('open'); }
+async function readNotif(id) {
+  const n = db.notifications.find(x => x.id === id);
+  if (n && !n.is_read) { try { await api('PATCH', '/notifications/' + id, { is_read: true }); n.is_read = true; renderNotifBell(); } catch(e) {} }
+}
+async function markAllRead() {
+  try { await api('POST', '/notifications/read-all'); db.notifications.forEach(n => n.is_read = true); renderNotifBell(); } catch(e) {}
+}
+function timeAgo(d) { if (!d) return ''; const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000); if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s/60) + 'm ago'; if (s < 86400) return Math.floor(s/3600) + 'h ago'; return Math.floor(s/86400) + 'd ago'; }
+document.addEventListener('click', e => { const dd = $('#notif-dropdown'); if (dd && dd.classList.contains('open') && !e.target.closest('.notif-bell-wrap')) dd.classList.remove('open'); });
 
 // ─── Client: My Bookings ─────────────────────────────────────
 async function renderMyBookings() {

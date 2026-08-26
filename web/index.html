@@ -79,6 +79,13 @@
           <div style="font-size:13px;color:#E2E8F0;font-weight:600" id="user-email"></div>
           <div style="font-size:11px;color:#64748B" id="user-role"></div>
         </div>
+        <div class="notif-bell-wrap">
+          <button class="notif-bell" id="notif-bell-btn" onclick="toggleNotifDropdown()"><i class="ti ti-bell"></i><span class="notif-badge" id="notif-badge" style="display:none">0</span></button>
+          <div class="notif-dropdown" id="notif-dropdown">
+            <div class="notif-dd-head"><span style="font-weight:600">Notifications</span><button class="btn btn-sm btn-outline" onclick="markAllRead()" style="font-size:11px;height:26px;padding:0 8px">Mark all read</button></div>
+            <div class="notif-dd-list" id="notif-dd-list"></div>
+          </div>
+        </div>
         <div class="avatar" id="top-avatar">B</div>
         <button class="logout" onclick="doLogout()">Sign out</button>
       </div>
@@ -583,23 +590,21 @@
         <div class="page-header">
           <div>
             <h1 class="page-title">Notifications</h1>
-            <p class="page-sub">Customer notification log</p>
+            <p class="page-sub" id="notifications-total"></p>
           </div>
-          <button class="btn btn-primary" onclick="openNotificationModal()"><i class="ti ti-plus"></i> Compose</button>
         </div>
 
         <div class="panel">
           <div class="table-scroll"><table>
-            <thead><tr><th>Customer</th><th>Type</th><th>Message</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Type</th><th>Title</th><th>Message</th><th>When</th></tr></thead>
             <tbody id="notifications-tbody"></tbody>
           </table></div>
           <div class="empty-state" id="notifications-empty" style="display:none">
             <div class="icon"><i class="ti ti-bell"></i></div>
             <h4>No notifications yet</h4>
-            <p>Compose a notification to send to customers.</p>
+            <p>You'll see appointment updates and alerts here.</p>
           </div>
           <div class="mobile-list" id="notifications-mobile"></div>
-          <div class="pager" id="notifications-pager"><span class="pager-left" id="notifications-pager-left"></span><div class="pager-btns" id="notifications-pager-btns"></div></div>
         </div>
       </section>
 
@@ -710,7 +715,7 @@
       <section id="page-my-bookings" style="display:none">
         <div class="page-header">
           <div>
-            <h1 class="page-title">My Bookings</h1>
+            <h1 class="page-title">My Appointments</h1>
             <p class="page-sub" id="mybookings-total"></p>
           </div>
           <button class="btn btn-primary" onclick="navigate('book-appointment')"><i class="ti ti-plus"></i> Book Appointment</button>
