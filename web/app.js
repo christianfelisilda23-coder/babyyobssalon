@@ -595,7 +595,7 @@ function saveSystemSettings() { saveSettings(); }
 
 // ─── Auth ────────────────────────────────────────────────────
 function setUserInfo(u) { if (!u) { $('#user-email').textContent = ''; $('#user-role').textContent = ''; $('#top-avatar').textContent = ''; return; } $('#user-email').textContent = u.email || ''; $('#user-role').textContent = ROLE_LABEL[u.role] || u.role; $('#top-avatar').textContent = u.name ? initials(u.name) : 'U'; if (u.role) renderSidebar(u); }
-function showLogin() { $('#login-overlay').classList.add('open'); $('#login-err').textContent = ''; }
+function showLogin() { ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings', 'my-bookings', 'book-appointment'].forEach(p => { const el = $('#page-' + p); if (el) el.style.display = 'none'; }); $('#login-overlay').classList.add('open'); $('#login-err').textContent = ''; }
 
 async function doLogin() {
   const email = $('#login-email').value.trim().toLowerCase(), pass = $('#login-pass').value;
@@ -608,7 +608,7 @@ async function doLogin() {
     await loadAllData();
     setUserInfo({ email, role: tokenPayload.role, name: email.split('@')[0] });
     $('#login-overlay').classList.remove('open');
-    currentPage = tokenPayload.role === 'client' ? 'my-bookings' : 'dashboard'; render();
+    currentPage = tokenPayload.role === 'client' ? 'my-bookings' : 'dashboard'; navigate(currentPage);
     toast('Welcome!');
   } catch(e) { $('#login-err').textContent = e.message || 'Login failed'; }
   $('#login-btn').disabled = false; $('#login-btn').textContent = 'Login';
@@ -644,7 +644,7 @@ async function doClientRegister() {
     await loadAllData();
     setUserInfo({ email, role: 'client', name });
     $('#login-overlay').classList.remove('open');
-    currentPage = 'my-bookings'; render();
+    currentPage = 'my-bookings'; navigate(currentPage);
     toast('Account created! Welcome!');
   } catch(e) { const errEl = $('#client-reg-err') || $('#login-err'); errEl.textContent = e.message || 'Registration failed'; }
   btn.disabled = false; btn.textContent = 'Create Account';
@@ -733,10 +733,9 @@ async function deleteUser(id) { try { await api('DELETE', '/auth/users/' + id); 
 // ─── Client: My Bookings ─────────────────────────────────────
 async function renderMyBookings() {
   const me = currentUser(); if (!me) return;
-  const myAppts = db.appointments.filter(a => {
-    const cl = db.clients.find(c => c.id === a.clientId);
-    return cl && cl.name && tokenPayload && tokenPayload.userId;
-  });
+  const myClient = db.clients.find(c => c.email && c.email.toLowerCase() === (tokenPayload.email || '').toLowerCase());
+  const myClientId = myClient ? myClient.id : null;
+  const myAppts = myClientId ? db.appointments.filter(a => a.clientId === myClientId) : [];
   const tbody = $('#mybookings-tbody');
   if (tbody) tbody.innerHTML = myAppts.map(a => `<tr><td class="cell-primary">${esc(a.date)}</td><td>${esc(a.time)}</td><td>${esc(a.service)}</td><td>${esc(a.staff)}</td><td><span class="badge ${APPT_STATUS[a.status]?.badge || 'badge-gray'}"><span class="bdot"></span>${APPT_STATUS[a.status]?.label || a.status}</span></td><td>${money(a.price)}</td><td>${a.status === 'requested' || a.status === 'confirmed' ? '<button class="btn btn-sm btn-outline" onclick="cancelMyBooking(\'' + a.id + '\')"><i class="ti ti-ban"></i> Cancel</button>' : ''}</td></tr>`).join('');
   if ($('#mybookings-empty')) $('#mybookings-empty').style.display = myAppts.length ? 'none' : 'block';
@@ -778,7 +777,7 @@ window.addEventListener('load', async () => {
       await loadAllData();
       setUserInfo({ email: tokenPayload.email || '', role: tokenPayload.role, name: '' });
       currentPage = tokenPayload.role === 'client' ? 'my-bookings' : 'dashboard';
-      render();
+      navigate(currentPage);
       return;
     }
   }
