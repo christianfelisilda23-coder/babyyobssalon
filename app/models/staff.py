@@ -1,15 +1,22 @@
-"""Staff, specialists (extend staff), and specialist specialties."""
+"""Staff, specialists (extend staff), specialist specialties, schedules, and time-off."""
 import uuid
-from datetime import datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, UniqueConstraint, func
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Time, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
 
-__all__ = ["Staff", "Specialist", "SpecialistSpecialty", "StaffService"]
+__all__ = [
+    "Staff",
+    "Specialist",
+    "SpecialistSpecialty",
+    "StaffService",
+    "StaffSchedule",
+    "StaffTimeOff",
+]
 
 
 class Staff(TimestampMixin, Base):
@@ -30,6 +37,12 @@ class Staff(TimestampMixin, Base):
 
     organization: Mapped["Organization"] = relationship(back_populates="staff")
     staff_services: Mapped[list["StaffService"]] = relationship(back_populates="staff")
+    schedule: Mapped[list["StaffSchedule"]] = relationship(
+        back_populates="staff", cascade="all, delete-orphan"
+    )
+    time_offs: Mapped[list["StaffTimeOff"]] = relationship(
+        back_populates="staff", cascade="all, delete-orphan"
+    )
     specialist: Mapped["Specialist | None"] = relationship(
         back_populates="staff", uselist=False, cascade="all, delete-orphan"
     )
@@ -99,3 +112,51 @@ class StaffService(Base):
 
     staff: Mapped["Staff"] = relationship(back_populates="staff_services")
     service: Mapped["Service"] = relationship(back_populates="staff_services")
+
+
+class StaffSchedule(Base):
+    """Weekly working-hours template for a staff member, one row per day-of-week."""
+
+    __tablename__ = "staff_schedules"
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "staff_id", "day_of_week", name="uq_staff_schedule_org_staff_day"
+        ),
+        CheckConstraint("day_of_week >= 0 AND day_of_week <= 6", name="ck_staff_schedule_dow"),
+        Index("ix_staff_schedules_organization_id", "organization_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False
+    )
+    staff_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("staff.id"), nullable=False)
+    day_of_week: Mapped[int] = mapped_column(Integer, nullable=False)
+    is_working: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    start_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+    end_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+    lunch_start: Mapped[time | None] = mapped_column(Time, nullable=True)
+    lunch_end: Mapped[time | None] = mapped_column(Time, nullable=True)
+
+    staff: Mapped["Staff"] = relationship(back_populates="schedule")
+
+
+class StaffTimeOff(Base):
+    """A specific day (or time window within a day) that a staff member is unavailable."""
+
+    __tablename__ = "staff_time_offs"
+    __table_args__ = (Index("ix_staff_time_offs_organization_id", "organization_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False
+    )
+    staff_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("staff.id"), nullable=False)
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    type: Mapped[str] = mapped_column(String(20), nullable=False, default="day_off")
+    reason: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    all_day: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    start_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+    end_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+
+    staff: Mapped["Staff"] = relationship(back_populates="time_offs")

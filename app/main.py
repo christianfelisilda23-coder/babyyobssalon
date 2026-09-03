@@ -22,6 +22,7 @@ from app.routers import (
     payments,
     products,
     reports,
+    scheduling,
     services,
     specialists,
     staff,
@@ -62,6 +63,7 @@ app.include_router(walk_ins.router)
 app.include_router(products.router)
 app.include_router(payments.router)
 app.include_router(reports.router)
+app.include_router(scheduling.router)
 app.include_router(notifications.router)
 app.include_router(activity_logs.router)
 
@@ -114,6 +116,41 @@ async def ensure_activity_logs_table():
         await db.execute(text("CREATE INDEX IF NOT EXISTS ix_activity_logs_org ON activity_logs(organization_id)"))
         await db.execute(text("CREATE INDEX IF NOT EXISTS ix_activity_logs_org_created ON activity_logs(organization_id, created_at)"))
         await db.execute(text("CREATE INDEX IF NOT EXISTS ix_activity_logs_org_entity ON activity_logs(organization_id, entity_type, entity_id)"))
+        await db.commit()
+
+
+@app.on_event("startup")
+async def ensure_scheduling_tables():
+    """Create staff schedule / time-off tables if absent (Render doesn't run alembic)."""
+    async with AsyncSessionLocal() as db:
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS staff_schedules (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                organization_id UUID NOT NULL REFERENCES organizations(id),
+                staff_id UUID NOT NULL REFERENCES staff(id),
+                day_of_week INTEGER NOT NULL,
+                is_working BOOLEAN NOT NULL DEFAULT true,
+                start_time TIME,
+                end_time TIME,
+                lunch_start TIME,
+                lunch_end TIME
+            )
+        """))
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS staff_time_offs (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                organization_id UUID NOT NULL REFERENCES organizations(id),
+                staff_id UUID NOT NULL REFERENCES staff(id),
+                date DATE NOT NULL,
+                type VARCHAR(20) NOT NULL DEFAULT 'day_off',
+                reason VARCHAR(200),
+                all_day BOOLEAN NOT NULL DEFAULT true,
+                start_time TIME,
+                end_time TIME
+            )
+        """))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_staff_schedules_org ON staff_schedules(organization_id)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_staff_time_offs_org ON staff_time_offs(organization_id)"))
         await db.commit()
 
 

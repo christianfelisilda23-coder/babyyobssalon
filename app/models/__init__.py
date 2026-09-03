@@ -32,7 +32,9 @@ from app.models.staff import (
     Specialist,
     SpecialistSpecialty,
     Staff,
+    StaffSchedule,
     StaffService,
+    StaffTimeOff,
 )
 from app.models.notifications import Notification
 from app.models.activity_log import ActivityLog
@@ -53,6 +55,8 @@ __all__ = [
     "Specialist",
     "SpecialistSpecialty",
     "StaffService",
+    "StaffSchedule",
+    "StaffTimeOff",
     "ServiceCategory",
     "Service",
     "ServicePackage",

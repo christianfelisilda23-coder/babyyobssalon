@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from uuid import UUID
 
@@ -103,6 +103,55 @@ class StaffOut(StaffBase):
     user_id: UUID
     created_at: datetime
     updated_at: datetime
+
+
+# -------------------------------------------------- Staff scheduling -----
+class ScheduleDayIn(BaseModel):
+    day_of_week: int = Field(ge=0, le=6)
+    is_working: bool = True
+    start_time: time | None = None
+    end_time: time | None = None
+    lunch_start: time | None = None
+    lunch_end: time | None = None
+
+
+class ScheduleDayOut(ScheduleDayIn):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    staff_id: UUID
+
+
+class ScheduleSetIn(BaseModel):
+    days: list[ScheduleDayIn]
+
+
+class ScheduleOut(BaseModel):
+    staff_id: UUID
+    display_name: str
+    days: list[ScheduleDayOut]
+
+
+class TimeOffIn(BaseModel):
+    date: date
+    type: str = Field(default="day_off", max_length=20)
+    reason: str | None = Field(default=None, max_length=200)
+    all_day: bool = True
+    start_time: time | None = None
+    end_time: time | None = None
+
+
+class TimeOffUpdate(BaseModel):
+    type: str | None = Field(default=None, max_length=20)
+    reason: str | None = Field(default=None, max_length=200)
+    all_day: bool | None = None
+    start_time: time | None = None
+    end_time: time | None = None
+
+
+class TimeOffOut(TimeOffIn):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    staff_id: UUID
 
 
 # ------------------------------------------------------------ Services ----

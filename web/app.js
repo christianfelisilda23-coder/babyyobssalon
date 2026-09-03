@@ -392,36 +392,125 @@ async function stockIn(id) { const p = db.products.find(x => x.id === id); if (!
 async function stockOut(id) { const p = db.products.find(x => x.id === id); if (!p) return; const amt = prompt('Stock out quantity:', '1'); if (amt === null) return; try { await api('POST', '/products/' + id + '/stock', { delta: -Number(amt) }); await loadAllData(); renderInventory(); toast('Stock updated'); } catch(e) { toast(e.message, true); } }
 async function deleteProduct(id) { try { await api('DELETE', '/products/' + id); await loadAllData(); renderInventory(); toast('Product deleted', true); } catch(e) { toast(e.message, true); } }
 
-// ─── Scheduling (localStorage only — no backend endpoint) ─────
-function renderScheduling() {
-  const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-  if (!db.staff.length) { $('#scheduling-tbody').innerHTML = ''; if ($('#scheduling-empty')) $('#scheduling-empty').style.display = 'block'; return; }
+// ─── Scheduling (backend-backed: weekly hours + time off) ─────
+const SCH_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const DOW_BY_KEY = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 };
+const KEY_BY_DOW = { 0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun' };
+function staffScheduleMap(days) { const m = {}; (days || []).forEach(d => { m[KEY_BY_DOW[d.day_of_week]] = d; }); return m; }
+function fmtTime(t) { if (!t) return ''; return String(t).slice(0, 5); }
+function manilaDate(offsetDays = 0) { const n = new Date(Date.now() + offsetDays * 86400000); return n.toISOString().slice(0, 10); }
+
+async function renderScheduling() {
+  if (!db.staff.length) { if ($('#scheduling-tbody')) $('#scheduling-tbody').innerHTML = ''; if ($('#scheduling-empty')) $('#scheduling-empty').style.display = 'block'; return; }
   if ($('#scheduling-empty')) $('#scheduling-empty').style.display = 'none';
-  $('#scheduling-tbody').innerHTML = db.staff.filter(s => s.status !== 'inactive').map(s => {
-    const cells = days.map(d => { const sch = s.schedule && s.schedule[d]; const off = !sch; return `<td style="cursor:pointer;${off ? 'color:var(--g400);font-style:italic' : ''}" data-act="toggle-schedule" data-staff="${s.id}" data-day="${d}">${off ? 'Off' : esc(sch.start + '-' + sch.end)}</td>`; }).join('');
-    return `<tr><td><div style="display:flex;align-items:center;gap:10px"><div class="avatar" style="width:28px;height:28px;font-size:10px">${esc(s.initials)}</div><span class="cell-primary">${esc(s.name)}</span></div></td>${cells}</tr>`;
-  }).join('');
+  try {
+    const schedules = {};
+    await Promise.all(db.staff.filter(s => s.status !== 'inactive').map(async s => {
+      try { const data = await api('GET', '/scheduling/staff/' + s.id + '/schedule'); schedules[s.id] = staffScheduleMap(data.days || []); } catch(e) { schedules[s.id] = {}; }
+    }));
+    let timeoffs = [];
+    try { const all = await Promise.all(db.staff.map(async s => { try { return (await api('GET', '/scheduling/staff/' + s.id + '/timeoffs')) || []; } catch(e) { return []; } })); timeoffs = all.flat(); } catch(e) { timeoffs = []; }
+    const rowHtml = db.staff.filter(s => s.status !== 'inactive').map(s => {
+      const cells = SCH_DAYS.map(d => {
+        const sch = schedules[s.id] && schedules[s.id][d];
+        if (!sch || !sch.is_working) return `<td style="color:var(--g400);font-style:italic">Off</td>`;
+        return `<td>${fmtTime(sch.start_time)}–${fmtTime(sch.end_time)}</td>`;
+      }).join('');
+      return `<tr><td><div style="display:flex;align-items:center;gap:10px"><div class="avatar" style="width:28px;height:28px;font-size:10px">${esc(s.initials)}</div><span class="cell-primary">${esc(s.name)}</span></div></td>${cells}<td class="actions-cell"><button class="btn btn-sm btn-outline" onclick="openScheduleFor('${s.id}')">Edit</button></td></tr>`;
+    }).join('');
+    if ($('#scheduling-tbody')) $('#scheduling-tbody').innerHTML = rowHtml;
+    const toRows = timeoffs.sort((a, b) => String(a.date).localeCompare(String(b.date))).map(t => {
+      const staff = db.staff.find(x => x.id === t.staff_id);
+      return `<tr><td class="cell-primary">${esc(staff ? staff.name : 'Staff')}</td><td>${esc(t.date)}</td><td><span class="badge ${t.type === 'leave' || t.type === 'sick' ? 'badge-rose' : 'badge-amber'}">${esc((t.type || 'day_off').replace('_', ' '))}</span></td><td class="cell-muted">${esc(t.reason || '—')}</td><td>${t.all_day ? 'Yes' : 'Partial'}</td><td class="cell-muted">${t.all_day ? '—' : fmtTime(t.start_time) + '–' + fmtTime(t.end_time)}</td><td class="actions-cell"><div class="kebab-wrap"><button class="kebab-btn" onclick="toggleKebab(this)">&#8942;</button><div class="kebab-menu"><button class="danger" data-act="delete-timeoff" data-id="${t.id}"><i class="ti ti-trash"></i> Delete</button></div></div></td></tr>`;
+    }).join('');
+    if ($('#timeoff-tbody')) $('#timeoff-tbody').innerHTML = toRows || `<tr><td class="cell-muted" colspan="7" style="text-align:center;padding:20px">No time off scheduled</td></tr>`;
+    if ($('#timeoff-empty')) $('#timeoff-empty').style.display = timeoffs.length ? 'none' : 'block';
+  } catch(e) { toast('Could not load schedules: ' + (e.message || e)); }
 }
-function toggleSchedule(staffId, day) { const s = db.staff.find(x => x.id === staffId); if (!s) return; if (!s.schedule) s.schedule = {}; if (s.schedule[day]) { delete s.schedule[day]; } else { s.schedule[day] = { start: '09:00', end: '17:00' }; } saveLocal(); renderScheduling(); }
-function openScheduleModal() {
-  const sel = $('#sch-staff');
-  if (sel) sel.innerHTML = db.staff.filter(s => s.status !== 'inactive').map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
-  $$('#schedule-modal .sch-day-chip input').forEach(cb => cb.checked = cb.value !== 'sat' && cb.value !== 'sun');
-  if ($('#sch-start')) $('#sch-start').value = '09:00';
-  if ($('#sch-end')) $('#sch-end').value = '17:00';
+async function openScheduleFor(staffId) {
+  if (!$('#sch-staff') || !$('#sch-staff').querySelector('option[value="' + staffId + '"]')) await populateScheduleStaffSelect(staffId);
+  $('#sch-staff').value = staffId;
+  await loadScheduleForStaff();
   if ($('#sch-err')) $('#sch-err').textContent = '';
   openModal('#schedule-modal');
 }
-function saveSchedule() {
+async function populateScheduleStaffSelect(preselect) {
+  const sel = $('#sch-staff');
+  if (!sel) return;
+  sel.innerHTML = db.staff.filter(s => s.status !== 'inactive').map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  if (preselect) sel.value = preselect;
+}
+async function openScheduleModal() {
+  await populateScheduleStaffSelect();
+  const first = $('#sch-staff') && $('#sch-staff').options[0] ? $('#sch-staff').options[0].value : null;
+  if (first) await loadScheduleForStaff();
+  if ($('#sch-err')) $('#sch-err').textContent = '';
+  openModal('#schedule-modal');
+}
+async function loadScheduleForStaff() {
+  const staffId = $('#sch-staff').value;
+  const pre = { start: '09:00', end: '17:00', lunch_start: '', lunch_end: '' };
+  if (staffId) {
+    try {
+      const data = await api('GET', '/scheduling/staff/' + staffId + '/schedule');
+      const m = staffScheduleMap(data.days || []);
+      const sch = m['mon'] || m['tue'] || m['wed'] || m['thu'] || m['fri'] || m['sat'] || m['sun'];
+      if (sch) { if (sch.start_time) pre.start = fmtTime(sch.start_time); if (sch.end_time) pre.end = fmtTime(sch.end_time); if (sch.lunch_start) pre.lunch_start = fmtTime(sch.lunch_start); if (sch.lunch_end) pre.lunch_end = fmtTime(sch.lunch_end); }
+      SCH_DAYS.forEach(d => { const c = $('#schedule-modal #chip-' + d + ' input'); if (c) c.checked = !!m[d] && m[d].is_working; });
+    } catch(e) { }
+  }
+  if ($('#sch-start')) $('#sch-start').value = pre.start;
+  if ($('#sch-end')) $('#sch-end').value = pre.end;
+  if ($('#sch-lunch-start')) $('#sch-lunch-start').value = pre.lunch_start;
+  if ($('#sch-lunch-end')) $('#sch-lunch-end').value = pre.lunch_end;
+}
+async function saveSchedule() {
   const staffId = $('#sch-staff').value, start = $('#sch-start').value, end = $('#sch-end').value;
-  if (!staffId || !start || !end) { if ($('#sch-err')) $('#sch-err').textContent = 'All fields required.'; return; }
-  const days = $$('#schedule-modal .sch-day-chip input:checked').map(cb => cb.value);
-  if (!days.length) { if ($('#sch-err')) $('#sch-err').textContent = 'Select at least one day.'; return; }
-  const s = db.staff.find(x => x.id === staffId);
-  if (!s) return;
-  if (!s.schedule) s.schedule = {};
-  days.forEach(d => { s.schedule[d] = { start, end }; });
-  saveLocal(); closeModal('#schedule-modal'); renderScheduling(); toast('Shift assigned to ' + days.length + ' day' + (days.length > 1 ? 's' : ''));
+  if (!staffId || !start || !end) { if ($('#sch-err')) $('#sch-err').textContent = 'Staff and times are required.'; return; }
+  const junk = $('#sch-lunch-start') ? $('#sch-lunch-start').value : '';
+  const lunke = $('#sch-lunch-end') ? $('#sch-lunch-end').value : '';
+  const days = SCH_DAYS.map(d => {
+    const cb = $('#schedule-modal #chip-' + d + ' input');
+    const on = cb && cb.checked;
+    return { day_of_week: DOW_BY_KEY[d], is_working: !!on, start_time: on ? start : null, end_time: on ? end : null, lunch_start: on ? (junk || null) : null, lunch_end: on ? (lunke || null) : null };
+  });
+  $('#schedule-modal .btn-primary').disabled = true;
+  try {
+    await api('PUT', '/scheduling/staff/' + staffId + '/schedule', { days });
+    closeModal('#schedule-modal'); await renderScheduling(); toast('Schedule saved');
+  } catch(e) { if ($('#sch-err')) $('#sch-err').textContent = e.message || 'Save failed'; }
+  $('#schedule-modal .btn-primary').disabled = false;
+}
+async function openTimeOffModal() {
+  const sel = $('#to-staff');
+  if (sel) sel.innerHTML = db.staff.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  if ($('#to-date')) $('#to-date').value = manilaDate();
+  if ($('#to-type')) $('#to-type').value = 'day_off';
+  if ($('#to-allday')) $('#to-allday').value = 'true';
+  if ($('#to-start')) $('#to-start').value = '';
+  if ($('#to-end')) $('#to-end').value = '';
+  if ($('#to-reason')) $('#to-reason').value = '';
+  if ($('#to-err')) $('#to-err').textContent = '';
+  openModal('#timeoff-modal');
+}
+async function saveTimeOff() {
+  const staffId = $('#to-staff').value, date = $('#to-date').value, type = $('#to-type').value;
+  if (!staffId || !date) { if ($('#to-err')) $('#to-err').textContent = 'Staff and date are required.'; return; }
+  const allDay = $('#to-allday').value === 'true';
+  const body = { date, type, reason: $('#to-reason').value || null, all_day: allDay, start_time: allDay ? null : ($('#to-start').value || null), end_time: allDay ? null : ($('#to-end').value || null) };
+  $('#timeoff-modal .btn-primary').disabled = true;
+  try {
+    await api('POST', '/scheduling/staff/' + staffId + '/timeoffs', body);
+    closeModal('#timeoff-modal'); await renderScheduling(); toast('Time off added');
+  } catch(e) { if ($('#to-err')) $('#to-err').textContent = e.message || 'Save failed'; }
+  $('#timeoff-modal .btn-primary').disabled = false;
+}
+async function deleteTimeOff(id) {
+  if (!confirm('Delete this time off entry?')) return;
+  try {
+    await api('DELETE', '/scheduling/timeoffs/' + id, null, true);
+    await renderScheduling(); toast('Time off removed');
+  } catch(e) { toast(e.message || 'Delete failed'); }
 }
 
 // ─── Billing ─────────────────────────────────────────────────
@@ -827,7 +916,6 @@ document.addEventListener('click', e => {
       case 'stock-in': stockIn(id); break;
       case 'stock-out': stockOut(id); break;
       case 'delete-inv': deleteProduct(id); break;
-      case 'toggle-schedule': toggleSchedule(act.dataset.staff, act.dataset.day); break;
       case 'toggle-promo': togglePromo(id); break;
       case 'delete-promo': deletePromo(id); break;
       case 'edit-loyalty': openLoyaltyModal(id); break;
@@ -836,6 +924,7 @@ document.addEventListener('click', e => {
       case 'respond-review': openReviewModal(id); break;
       case 'delete-review': deleteReview(id); break;
       case 'delete-user': deleteUser(id); break;
+      case 'delete-timeoff': deleteTimeOff(id); break;
       case 'remove-loyalty': { const c = db.clients.find(x => x.id === id); if (c) { c.loyaltyPoints = 0; c.tier = 'Bronze'; saveLocal(); renderLoyalty(); toast('Removed from loyalty'); } break; }
     }
     closeAllKebabs(); return;

@@ -370,53 +370,115 @@
       <section id="page-scheduling" style="display:none">
         <div class="page-header">
           <div>
-            <h1 class="page-title">Scheduling</h1>
-            <p class="page-sub">Weekly staff schedule</p>
+            <h1 class="page-title">Staff Schedule</h1>
+            <p class="page-sub">Weekly working hours, days off, and leave</p>
           </div>
-          <button class="btn btn-primary" onclick="openScheduleModal()"><i class="ti ti-plus"></i> Assign shift</button>
+          <button class="btn btn-primary" onclick="openScheduleModal()"><i class="ti ti-plus"></i> Set schedule</button>
         </div>
 
         <div class="panel">
           <div class="table-scroll"><table>
-            <thead><tr><th>Staff Member</th><th>Monday</th><th>Tuesday</th><th>Wednesday</th><th>Thursday</th><th>Friday</th><th>Saturday</th><th>Sunday</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Staff Member</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th><th>Actions</th></tr></thead>
             <tbody id="scheduling-tbody"></tbody>
           </table></div>
           <div class="empty-state" id="scheduling-empty" style="display:none">
             <div class="icon"><i class="ti ti-calendar-time"></i></div>
             <h4>No schedule yet</h4>
-            <p>Add staff and assign shifts to build the weekly schedule.</p>
+            <p>Select a staff member and set their weekly working hours.</p>
           </div>
           <div class="mobile-list" id="scheduling-mobile"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Days Off &amp; Leave</h3>
+              <p class="page-sub">Unavailability, holidays, and approved leave</p>
+            </div>
+            <button class="btn btn-outline" onclick="openTimeOffModal()"><i class="ti ti-plus"></i> Add time off</button>
+          </div>
+          <div class="table-scroll"><table>
+            <thead><tr><th>Staff Member</th><th>Date</th><th>Type</th><th>Reason</th><th>All day</th><th>Time</th><th></th></tr></thead>
+            <tbody id="timeoff-tbody"></tbody>
+          </table></div>
+          <div class="empty-state" id="timeoff-empty" style="display:none">
+            <div class="icon"><i class="ti ti-calendar-off"></i></div>
+            <h4>No time off scheduled</h4>
+            <p>Add days off or leave for your staff.</p>
+          </div>
         </div>
       </section>
 
       <!-- ============ Schedule Modal ============ -->
       <div class="modal-backdrop" id="schedule-modal">
         <div class="modal">
-          <div class="modal-head"><h3>Assign Shift</h3>
+          <div class="modal-head"><h3>Set Weekly Schedule</h3>
             <button data-close="schedule-modal">✕</button></div>
           <div class="modal-body">
             <div class="field"><label>Staff member</label>
-              <select id="sch-staff"></select></div>
-            <div class="field"><label>Days</label>
+              <select id="sch-staff" onchange="loadScheduleForStaff()"></select></div>
+            <div class="field"><label>Working days — click a day to toggle on/off</label>
               <div class="sch-days-grid">
-                <label class="sch-day-chip"><input type="checkbox" value="mon" checked> Mon</label>
-                <label class="sch-day-chip"><input type="checkbox" value="tue" checked> Tue</label>
-                <label class="sch-day-chip"><input type="checkbox" value="wed" checked> Wed</label>
-                <label class="sch-day-chip"><input type="checkbox" value="thu" checked> Thu</label>
-                <label class="sch-day-chip"><input type="checkbox" value="fri" checked> Fri</label>
-                <label class="sch-day-chip"><input type="checkbox" value="sat"> Sat</label>
-                <label class="sch-day-chip"><input type="checkbox" value="sun"> Sun</label>
+                <label class="sch-day-chip" id="chip-mon"><input type="checkbox" value="mon"> Mon</label>
+                <label class="sch-day-chip" id="chip-tue"><input type="checkbox" value="tue"> Tue</label>
+                <label class="sch-day-chip" id="chip-wed"><input type="checkbox" value="wed"> Wed</label>
+                <label class="sch-day-chip" id="chip-thu"><input type="checkbox" value="thu"> Thu</label>
+                <label class="sch-day-chip" id="chip-fri"><input type="checkbox" value="fri"> Fri</label>
+                <label class="sch-day-chip" id="chip-sat"><input type="checkbox" value="sat"> Sat</label>
+                <label class="sch-day-chip" id="chip-sun"><input type="checkbox" value="sun"> Sun</label>
               </div></div>
             <div class="field-row">
               <div class="field"><label>Start time</label><input type="time" id="sch-start" value="09:00"></div>
               <div class="field"><label>End time</label><input type="time" id="sch-end" value="17:00"></div>
             </div>
+            <div class="field-row">
+              <div class="field"><label>Lunch start (optional)</label><input type="time" id="sch-lunch-start"></div>
+              <div class="field"><label>Lunch end (optional)</label><input type="time" id="sch-lunch-end"></div>
+            </div>
+            <p class="page-sub">Times apply to every selected working day. Leave a day unchecked to mark it off.</p>
             <p class="modal-err" id="sch-err"></p>
           </div>
           <div class="modal-foot">
             <button class="btn btn-secondary" data-close="schedule-modal">Cancel</button>
-            <button class="btn btn-primary" onclick="saveSchedule()">Save Shift</button>
+            <button class="btn btn-primary" onclick="saveSchedule()">Save Schedule</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ Time Off Modal ============ -->
+      <div class="modal-backdrop" id="timeoff-modal">
+        <div class="modal">
+          <div class="modal-head"><h3>Add Time Off / Leave</h3>
+            <button data-close="timeoff-modal">✕</button></div>
+          <div class="modal-body">
+            <div class="field"><label>Staff member</label>
+              <select id="to-staff"></select></div>
+            <div class="field"><label>Date</label><input type="date" id="to-date"></div>
+            <div class="field-row">
+              <div class="field"><label>Type</label>
+                <select id="to-type">
+                  <option value="day_off">Day off</option>
+                  <option value="leave">Leave</option>
+                  <option value="holiday">Holiday</option>
+                  <option value="sick">Sick leave</option>
+                  <option value="other">Other</option>
+                </select></div>
+              <div class="field"><label>All day</label>
+                <select id="to-allday">
+                  <option value="true">Yes</option>
+                  <option value="false">Partial (set times)</option>
+                </select></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>From</label><input type="time" id="to-start"></div>
+              <div class="field"><label>To</label><input type="time" id="to-end"></div>
+            </div>
+            <div class="field"><label>Reason (optional)</label><input id="to-reason" placeholder="e.g. vacation, medical, personal..."></div>
+            <p class="modal-err" id="to-err"></p>
+          </div>
+          <div class="modal-foot">
+            <button class="btn btn-secondary" data-close="timeoff-modal">Cancel</button>
+            <button class="btn btn-primary" onclick="saveTimeOff()">Save</button>
           </div>
         </div>
       </div>
