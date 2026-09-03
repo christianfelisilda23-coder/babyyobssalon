@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -8,8 +8,8 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.security import Principal, get_current_principal
-from app.models import Appointment, AppointmentStatus, Staff
-from app.schemas.schemas import AppointmentCreate, AppointmentOut, AppointmentStatusUpdate
+from app.models import Appointment, AppointmentService, AppointmentStatus, Staff
+from app.schemas.schemas import AppointmentCreate, AppointmentOut, AppointmentReschedule, AppointmentStatusUpdate
 from app.services import appointments as appointment_service
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
@@ -123,6 +123,40 @@ async def get_appointment(
     principal: Principal = Depends(get_current_principal),
 ):
     return await _get_appointment_or_404(db, appointment_id, principal.organization_id)
+
+
+@router.patch("/{appointment_id}", response_model=AppointmentOut)
+async def reschedule_appointment(
+    appointment_id: UUID,
+    payload: AppointmentReschedule,
+    db: AsyncSession = Depends(get_db),
+    principal: Principal = Depends(get_current_principal),
+):
+    """Reschedule an appointment's start time and/or reassign its staff member."""
+    appointment = await _get_appointment_or_404(db, appointment_id, principal.organization_id)
+    if payload.start_time is not None:
+        total_duration = sum((line.duration_minutes or 0) * (line.quantity or 1) for line in appointment.appointment_services) or 60
+        appointment.start_time = payload.start_time
+        appointment.end_time = payload.start_time + timedelta(minutes=total_duration)
+    if payload.staff_id is not None:
+        if payload.staff_id != appointment.staff_id:
+            stf = (
+                await db.execute(
+                    select(Staff).where(
+                        Staff.id == payload.staff_id,
+                        Staff.organization_id == principal.organization_id,
+                        Staff.deleted_at.is_(None),
+                        Staff.active.is_(True),
+                    )
+                )
+            ).scalar_one_or_none()
+            if stf is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff member not found")
+            appointment.staff_id = payload.staff_id
+    appointment.updated_by = principal.user_id
+    await db.commit()
+    appt = await _get_appointment_or_404(db, appointment_id, principal.organization_id)
+    return appt
 
 
 @router.post("/{appointment_id}/status", response_model=AppointmentOut)

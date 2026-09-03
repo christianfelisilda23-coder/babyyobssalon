@@ -60,8 +60,8 @@
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('open')"></div>
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-      <div class="mark"><i class="ti ti-flower"></i></div>
-      <div class="name">Bloom Studio</div>
+      <div class="mark" id="brand-mark"><i class="ti ti-flower"></i></div>
+      <div class="name" id="brand-name">Bloom Studio</div>
     </div>
     <nav class="sidebar-nav" id="sidebar-nav">
     </nav>
@@ -116,6 +116,14 @@
             <div><div class="kpi-value" id="kpi-pending">0</div><div class="kpi-label">Pending appointments</div></div></div>
           <div class="kpi-card"><div class="kpi-icon" style="background:#FEF2F2;color:#DC2626"><i class="ti ti-alert-triangle"></i></div>
             <div><div class="kpi-value" id="kpi-lowstock">0</div><div class="kpi-label">Low-stock alerts</div></div></div>
+          <div class="kpi-card"><div class="kpi-icon" style="background:#EEF2FF;color:#4F46E5"><i class="ti ti-calendar-month"></i></div>
+            <div><div class="kpi-value" id="kpi-appointments">0</div><div class="kpi-label">Total appointments</div></div></div>
+          <div class="kpi-card"><div class="kpi-icon" style="background:#F0FDF4;color:#16A34A"><i class="ti ti-scissors"></i></div>
+            <div><div class="kpi-value" id="kpi-services">0</div><div class="kpi-label">Total services</div></div></div>
+          <div class="kpi-card"><div class="kpi-icon" style="background:#ECFEFF;color:#0891B2"><i class="ti ti-circle-check"></i></div>
+            <div><div class="kpi-value" id="kpi-completed">0</div><div class="kpi-label">Completed appointments</div></div></div>
+          <div class="kpi-card"><div class="kpi-icon" style="background:#FEF9C3;color:#CA8A04"><i class="ti ti-circle-x"></i></div>
+            <div><div class="kpi-value" id="kpi-cancelled">0</div><div class="kpi-label">Cancelled appointments</div></div></div>
         </div>
 
         <div class="panel">
@@ -808,7 +816,7 @@
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px" class="settings-grid">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px" class="settings-grid">
 
           <!-- Business Info -->
           <div class="panel">
@@ -830,7 +838,70 @@
                 <label>Email</label>
                 <input id="settings-salon-email" value="hello@bloomstudio.ph">
               </div>
+              <div class="field">
+                <label>Logo URL</label>
+                <input id="settings-logo" placeholder="https://.../logo.png">
+                <p class="page-sub" style="font-size:11px">Paste an image URL or leave blank for the default logo.</p>
+              </div>
               <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="saveBusinessInfo()"><i class="ti ti-device-floppy"></i> Save</button>
+            </div>
+          </div>
+
+          <!-- Business Hours -->
+          <div class="panel">
+            <div class="panel-header"><h3 class="panel-title">Business Hours</h3></div>
+            <div class="modal-body">
+              <div class="field-row">
+                <div class="field"><label>Opening time</label><input type="time" id="settings-hours-open"></div>
+                <div class="field"><label>Closing time</label><input type="time" id="settings-hours-close"></div>
+              </div>
+              <div class="field"><label>Open days</label>
+                <div class="sch-days-grid">
+                  <label class="sch-day-chip" id="hour-chip-mon"><input type="checkbox" value="mon" checked> Mon</label>
+                  <label class="sch-day-chip" id="hour-chip-tue"><input type="checkbox" value="tue" checked> Tue</label>
+                  <label class="sch-day-chip" id="hour-chip-wed"><input type="checkbox" value="wed" checked> Wed</label>
+                  <label class="sch-day-chip" id="hour-chip-thu"><input type="checkbox" value="thu" checked> Thu</label>
+                  <label class="sch-day-chip" id="hour-chip-fri"><input type="checkbox" value="fri" checked> Fri</label>
+                  <label class="sch-day-chip" id="hour-chip-sat"><input type="checkbox" value="sat" checked> Sat</label>
+                  <label class="sch-day-chip" id="hour-chip-sun"><input type="checkbox" value="sun"> Sun</label>
+                </div></div>
+              <button class="btn btn-primary" style="width:100%;margin-top:10px;background:#0891B2" onclick="saveBusinessHours()"><i class="ti ti-device-floppy"></i> Save Hours</button>
+            </div>
+          </div>
+
+          <!-- Appointment Rules -->
+          <div class="panel">
+            <div class="panel-header"><h3 class="panel-title">Appointment Rules</h3></div>
+            <div class="modal-body">
+              <div class="field"><label>Booking window (advance days)</label>
+                <input type="number" id="settings-rule-window" min="1"></div>
+              <div class="field"><label>Advance booking notice (hours)</label>
+                <input type="number" id="settings-rule-notice" min="0"></div>
+              <div class="field"><label>Buffer between appointments (min)</label>
+                <input type="number" id="settings-rule-buffer" min="0"></div>
+              <div class="field"><label>Auto-confirm new bookings</label>
+                <select id="settings-rule-autoconfirm"><option value="false">No</option><option value="true">Yes</option></select></div>
+              <div class="field"><label>Allow double-booking a staff member</label>
+                <select id="settings-rule-doublebook"><option value="false">No</option><option value="true">Yes</option></select></div>
+              <button class="btn btn-primary" style="width:100%;margin-top:10px;background:#7C3AED" onclick="saveAppointmentRules()"><i class="ti ti-device-floppy"></i> Save Rules</button>
+            </div>
+          </div>
+
+          <!-- Payment Settings -->
+          <div class="panel">
+            <div class="panel-header"><h3 class="panel-title">Payment Settings</h3></div>
+            <div class="modal-body">
+              <div class="field"><label>Accepted payment methods</label>
+                <div class="sch-days-grid">
+                  <label class="sch-day-chip" id="pay-chip-cash"><input type="checkbox" value="cash" checked> Cash</label>
+                  <label class="sch-day-chip" id="pay-chip-gcash"><input type="checkbox" value="gcash" checked> GCash</label>
+                  <label class="sch-day-chip" id="pay-chip-card"><input type="checkbox" value="card" checked> Card</label>
+                </div></div>
+              <div class="field"><label>Default deposit (%)</label>
+                <input type="number" id="settings-pay-deposit" min="0" max="100"></div>
+              <div class="field"><label>Require deposit to confirm</label>
+                <select id="settings-pay-requiredeposit"><option value="false">No</option><option value="true">Yes</option></select></div>
+              <button class="btn btn-primary" style="width:100%;margin-top:10px;background:#059669" onclick="savePaymentSettings()"><i class="ti ti-device-floppy"></i> Save Payments</button>
             </div>
           </div>
 

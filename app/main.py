@@ -124,6 +124,17 @@ async def ensure_scheduling_tables():
     """Create staff schedule / time-off tables if absent (Render doesn't run alembic)."""
     async with AsyncSessionLocal() as db:
         await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS staff_services (
+                staff_id UUID NOT NULL REFERENCES staff(id),
+                service_id UUID NOT NULL REFERENCES services(id),
+                organization_id UUID NOT NULL REFERENCES organizations(id),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                PRIMARY KEY (staff_id, service_id)
+            )
+        """))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_staff_services_staff ON staff_services(staff_id)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_staff_services_service ON staff_services(service_id)"))
+        await db.execute(text("""
             CREATE TABLE IF NOT EXISTS staff_schedules (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 organization_id UUID NOT NULL REFERENCES organizations(id),

@@ -164,7 +164,7 @@ class ServiceBase(BaseModel):
 
 
 class ServiceCreate(ServiceBase):
-    pass
+    assigned_staff_ids: list[UUID] = Field(default_factory=list)
 
 
 class ServiceUpdate(BaseModel):
@@ -173,6 +173,7 @@ class ServiceUpdate(BaseModel):
     duration_minutes: int | None = Field(default=None, gt=0)
     price_cents: int | None = Field(default=None, ge=0)
     active: bool | None = None
+    assigned_staff_ids: list[UUID] | None = None
 
 
 class ServiceOut(ServiceBase):
@@ -181,6 +182,8 @@ class ServiceOut(ServiceBase):
     organization_id: UUID
     created_at: datetime
     updated_at: datetime
+    assigned_staff_ids: list[UUID] = Field(default_factory=list)
+    assigned_staff_names: list[str] = Field(default_factory=list)
 
 
 # ------------------------------------------------------- Staff/Services ---
@@ -243,6 +246,18 @@ class AppointmentCreate(BaseModel):
 class AppointmentStatusUpdate(BaseModel):
     status: AppointmentStatus
     cancellation_reason: str | None = None
+
+
+class AppointmentReschedule(BaseModel):
+    start_time: datetime | None = None
+    staff_id: UUID | None = None
+
+    @field_validator("start_time")
+    @classmethod
+    def start_time_must_be_tz_aware(cls, v: datetime | None) -> datetime | None:
+        if v is not None and v.tzinfo is None:
+            raise ValueError("start_time must include a timezone offset")
+        return v
 
 
 class AppointmentServiceOut(BaseModel):

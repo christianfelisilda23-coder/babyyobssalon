@@ -38,7 +38,7 @@ async function tryRefresh() {
 // ─── State ───────────────────────────────────────────────────
 const SESSION_KEY = 'salon_session';
 const LOCAL_KEY = 'salon_local_v1';
-let db = { clients: [], staff: [], services: [], appointments: [], products: [], transactions: [], promotions: [], notifications: [], reviews: [], settings: { salonName: 'Bloom Studio', salonAddress: 'Quezon City', salonPhone: '', salonEmail: '', taxRate: 12, currency: '₱', lowStockThreshold: 10 }, users: [], nextId: { promotion: 1, notification: 1, review: 1 } };
+let db = { clients: [], staff: [], services: [], appointments: [], products: [], transactions: [], promotions: [], notifications: [], reviews: [], settings: { salonName: 'Bloom Studio', salonAddress: 'Quezon City', salonPhone: '', salonEmail: '', logo: '', taxRate: 12, currency: '₱', lowStockThreshold: 10, businessHours: { open: '09:00', close: '18:00', days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'] }, appointmentRules: { advanceDays: 30, noticeHours: 2, bufferMin: 0, autoConfirm: false, allowDoubleBook: false }, payment: { methods: ['cash', 'gcash', 'card'], defaultDepositPct: 0, requireDeposit: false } }, users: [], nextId: { promotion: 1, notification: 1, review: 1 } };
 function loadLocal() { try { const r = localStorage.getItem(LOCAL_KEY); if (r) { const s = JSON.parse(r); db.promotions = s.promotions || []; db.notifications = s.notifications || []; db.reviews = s.reviews || []; db.settings = Object.assign(db.settings, s.settings || {}); db.nextId = Object.assign(db.nextId, s.nextId || {}); } } catch(e) {} }
 function saveLocal() { localStorage.setItem(LOCAL_KEY, JSON.stringify({ promotions: db.promotions, notifications: db.notifications, reviews: db.reviews, settings: db.settings, nextId: db.nextId })); }
 loadLocal();
@@ -62,7 +62,7 @@ async function loadAllData() {
 
     db.clients = clients.map(c => ({ id: c.id, name: c.full_name, phone: c.phone || '', email: c.email || '', notes: c.notes || '', visit: 0, ltv: 0, loyaltyPoints: 0, tier: 'Bronze' }));
     db.staff = staff.map(s => ({ id: s.id, name: s.display_name, role: s.title || 'Staff', phone: '', email: '', status: s.active ? 'active' : 'inactive', initials: initials(s.display_name), schedule: {}, userId: s.user_id }));
-    db.services = services.map(s => ({ id: s.id, name: s.name, category: s.category || 'General', duration: s.duration_minutes, price: s.price_cents / 100, assignedStaff: [] }));
+    db.services = services.map(s => ({ id: s.id, name: s.name, category: s.category || 'General', duration: s.duration_minutes, price: s.price_cents / 100, assignedStaffIds: s.assigned_staff_ids || [], assignedStaff: s.assigned_staff_names || [], active: s.active }));
     db.products = products.map(p => ({ id: p.id, name: p.name, category: p.category || 'General', stock: Number(p.stock_quantity), unitPrice: p.price_cents / 100, lowStockThreshold: Number(p.reorder_level), supplier: '', unit: p.unit || 'unit', sku: p.sku || '' }));
 
     db.appointments = appointments.map(a => {
@@ -118,6 +118,7 @@ function navigate(page) {
   closeAllKebabs(); render();
 }
 function render() {
+  applyBrand();
   if ($('#nav-appts')) $('#nav-appts').textContent = db.appointments.filter(a => a.status !== 'cancelled' && a.status !== 'completed').length;
   if ($('#nav-lowstock')) $('#nav-lowstock').textContent = db.products.filter(p => p.stock <= p.lowStockThreshold).length;
   const fn = { dashboard: renderDashboard, appointments: renderAppointments, clients: renderClients, staff: renderStaff, services: renderServices, inventory: renderInventory, scheduling: renderScheduling, billing: renderBilling, loyalty: renderLoyalty, reports: renderReports, notifications: renderNotifications, 'activity-logs': renderActivityLogs, 'user-management': renderUserManagement, reviews: renderReviews, settings: renderSettings, 'my-bookings': renderMyBookings, 'book-appointment': renderBookAppointment }[currentPage];
@@ -172,8 +173,12 @@ async function renderDashboard() {
     $('#kpi-revenue').textContent = money(centsToPeso(d.revenue_cents || 0));
     $('#kpi-clients').textContent = db.clients.length;
     $('#kpi-staff').textContent = db.staff.filter(s => s.status === 'active').length;
-    if ($('#kpi-pending')) $('#kpi-pending').textContent = (d.appointments.requested || 0) + (d.appointments.confirmed || 0);
+    $('#kpi-pending').textContent = (d.appointments.requested || 0) + (d.appointments.confirmed || 0);
     if ($('#kpi-lowstock')) $('#kpi-lowstock').textContent = d.low_stock_products || 0;
+    if ($('#kpi-appointments')) $('#kpi-appointments').textContent = d.appointments_total || 0;
+    if ($('#kpi-services')) $('#kpi-services').textContent = db.services.length;
+    if ($('#kpi-completed')) $('#kpi-completed').textContent = d.appointments.completed || 0;
+    if ($('#kpi-cancelled')) $('#kpi-cancelled').textContent = d.appointments.cancelled || 0;
   } catch(e) {
     $('#kpi-today').textContent = db.appointments.filter(a => a.date === todayISO()).length;
     $('#kpi-revenue').textContent = money(db.appointments.filter(a => a.date === todayISO()).reduce((s, a) => s + a.price, 0));
@@ -181,6 +186,10 @@ async function renderDashboard() {
     $('#kpi-staff').textContent = db.staff.filter(s => s.status === 'active').length;
     if ($('#kpi-pending')) $('#kpi-pending').textContent = db.appointments.filter(a => a.status === 'requested' || a.status === 'confirmed').length;
     if ($('#kpi-lowstock')) $('#kpi-lowstock').textContent = db.products.filter(p => p.stock <= p.lowStockThreshold).length;
+    if ($('#kpi-appointments')) $('#kpi-appointments').textContent = db.appointments.length;
+    if ($('#kpi-services')) $('#kpi-services').textContent = db.services.length;
+    if ($('#kpi-completed')) $('#kpi-completed').textContent = db.appointments.filter(a => a.status === 'completed').length;
+    if ($('#kpi-cancelled')) $('#kpi-cancelled').textContent = db.appointments.filter(a => a.status === 'cancelled').length;
   }
 
   const today = todayISO();
@@ -211,7 +220,7 @@ async function renderAppointments() {
     if (a.status === 'requested') actions = '<button class="btn btn-sm btn-primary" style="margin-right:4px" data-act="confirm" data-id="'+a.id+'"><i class="ti ti-check"></i> Approve</button><button class="btn btn-sm btn-delete" data-act="cancel" data-id="'+a.id+'"><i class="ti ti-x"></i> Decline</button>';
     else if (a.status === 'confirmed') actions = '<button class="btn btn-sm btn-outline" style="margin-right:4px" data-act="checkin" data-id="'+a.id+'"><i class="ti ti-login"></i> Check in</button><button class="btn btn-sm btn-delete" data-act="cancel" data-id="'+a.id+'"><i class="ti ti-x"></i> Cancel</button>';
     else if (a.status === 'in_progress') actions = '<button class="btn btn-sm btn-primary" style="margin-right:4px" data-act="complete" data-id="'+a.id+'"><i class="ti ti-circle-check"></i> Complete</button><button class="btn btn-sm btn-delete" data-act="cancel" data-id="'+a.id+'"><i class="ti ti-x"></i> Cancel</button>';
-    return `<tr><td class="cell-primary">${esc(a.date)}</td><td>${esc(a.time)}</td><td class="cell-primary">${esc(a.client)}</td><td>${esc(a.service)}</td><td>${esc(a.staff)}</td><td><span class="badge ${APPT_STATUS[a.status]?.badge || 'badge-gray'}"><span class="bdot"></span>${APPT_STATUS[a.status]?.label || a.status}</span></td><td>${money(a.price)}</td><td class="actions-cell"><div class="kebab-wrap"><button class="kebab-btn" onclick="toggleKebab(this)">&#8942;</button><div class="kebab-menu">${actions}</div></div></td></tr>`;
+    return `<tr><td class="cell-primary">${esc(a.date)}</td><td>${esc(a.time)}</td><td class="cell-primary">${esc(a.client)}</td><td>${esc(a.service)}</td><td>${esc(a.staff)}</td><td><span class="badge ${APPT_STATUS[a.status]?.badge || 'badge-gray'}"><span class="bdot"></span>${APPT_STATUS[a.status]?.label || a.status}</span></td><td>${money(a.price)}</td><td class="actions-cell"><div class="kebab-wrap"><button class="kebab-btn" onclick="toggleKebab(this)">&#8942;</button><div class="kebab-menu">${a.status === 'requested' || a.status === 'confirmed' ? `<button data-act="reschedule" data-id="${a.id}"><i class="ti ti-calendar-plus"></i> Reschedule</button>` : ''}${actions}</div></div></td></tr>`;
   }).join('');
   $('#appts-empty').style.display = info.total ? 'none' : 'block';
   $('#appts-pager').innerHTML = pagerHTML('appointments', info);
@@ -245,6 +254,10 @@ async function saveAppointment() {
     const start_time = toISOWithTZ(date, time);
     if (editingApptId) {
       const existing = db.appointments.find(x => x.id === editingApptId);
+      const patch = {};
+      if (date !== existing.date || time !== existing.time) patch.start_time = start_time;
+      if (stf.id !== existing.staffId) patch.staff_id = stf.id;
+      if (Object.keys(patch).length) { await api('PATCH', '/appointments/' + editingApptId, patch); }
       if (existing && existing.status !== status) {
         if (status === 'completed') { await api('POST', '/appointments/' + editingApptId + '/complete'); }
         else { await api('POST', '/appointments/' + editingApptId + '/status', { status }); }
@@ -350,12 +363,13 @@ async function renderServices() {
   if ($('#svc-empty')) $('#svc-empty').style.display = db.services.length ? 'none' : 'block';
 }
 let editingSvcId = null;
-function openSvcModal(id) { editingSvcId = id || null; $('#svc-err').textContent = ''; const s = id ? db.services.find(x => x.id === id) : null; $('#svc-modal-title').textContent = s ? 'Edit service' : 'New service'; $('#v-name').value = s ? s.name : ''; $('#v-cat').value = s ? s.category : 'Cut & Style'; $('#v-dur').value = s ? s.duration : 60; $('#v-price').value = s ? s.price : ''; openModal('#svc-modal'); }
+function openSvcModal(id) { editingSvcId = id || null; $('#svc-err').textContent = ''; const s = id ? db.services.find(x => x.id === id) : null; $('#svc-modal-title').textContent = s ? 'Edit service' : 'New service'; $('#v-name').value = s ? s.name : ''; $('#v-cat').value = s ? s.category : 'Cut & Style'; $('#v-dur').value = s ? s.duration : 60; $('#v-price').value = s ? s.price : ''; const assigned = new Set((s && s.assignedStaffIds) || []); $('#v-staff').innerHTML = db.staff.map(st => `<label class="sch-day-chip" style="cursor:pointer"><input type="checkbox" data-svc-staff="${st.id}" ${assigned.has(st.id) ? 'checked' : ''}> ${esc(st.name)}</label>`).join('') || '<span class="cell-muted">No staff available</span>'; openModal('#svc-modal'); }
 async function saveSvc() {
   const name = $('#v-name').value.trim(), category = $('#v-cat').value.trim(), duration = Number($('#v-dur').value), price = Number($('#v-price').value);
   if (!name || !category || !duration || !price) { $('#svc-err').textContent = 'All fields required.'; return; }
+  const assigned_staff_ids = $$('#v-staff input[data-svc-staff]:checked').map(cb => cb.dataset.svcStaff);
   try {
-    const payload = { name, category, duration_minutes: duration, price_cents: pesoToCents(price), active: true };
+    const payload = { name, category, duration_minutes: duration, price_cents: pesoToCents(price), active: true, assigned_staff_ids };
     if (editingSvcId) { await api('PATCH', '/services/' + editingSvcId, payload); }
     else { await api('POST', '/services', payload); }
     await loadAllData(); closeModal('#svc-modal'); renderServices(); toast(editingSvcId ? 'Service updated' : 'Service added');
@@ -822,9 +836,24 @@ function renderSettings() {
   if ($('#settings-salon-address')) $('#settings-salon-address').value = db.settings.salonAddress;
   if ($('#settings-salon-phone')) $('#settings-salon-phone').value = db.settings.salonPhone;
   if ($('#settings-salon-email')) $('#settings-salon-email').value = db.settings.salonEmail;
+  if ($('#settings-logo')) $('#settings-logo').value = db.settings.logo || '';
   if ($('#settings-tax-rate')) $('#settings-tax-rate').value = db.settings.taxRate;
   if ($('#settings-currency')) $('#settings-currency').value = db.settings.currency;
   if ($('#settings-lowstock-threshold')) $('#settings-lowstock-threshold').value = db.settings.lowStockThreshold;
+  const bh = Object.assign({ open: '09:00', close: '18:00', days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'] }, db.settings.businessHours || {});
+  if ($('#settings-hours-open')) $('#settings-hours-open').value = bh.open;
+  if ($('#settings-hours-close')) $('#settings-hours-close').value = bh.close;
+  SCH_DAYS.forEach(d => { const c = $('#hour-chip-' + d + ' input'); if (c) c.checked = (bh.days || []).includes(d); });
+  const rules = Object.assign({ advanceDays: 30, noticeHours: 2, bufferMin: 0, autoConfirm: false, allowDoubleBook: false }, db.settings.appointmentRules || {});
+  if ($('#settings-rule-window')) $('#settings-rule-window').value = rules.advanceDays;
+  if ($('#settings-rule-notice')) $('#settings-rule-notice').value = rules.noticeHours;
+  if ($('#settings-rule-buffer')) $('#settings-rule-buffer').value = rules.bufferMin;
+  if ($('#settings-rule-autoconfirm')) $('#settings-rule-autoconfirm').value = String(rules.autoConfirm);
+  if ($('#settings-rule-doublebook')) $('#settings-rule-doublebook').value = String(rules.allowDoubleBook);
+  const pay = Object.assign({ methods: ['cash', 'gcash', 'card'], defaultDepositPct: 0, requireDeposit: false }, db.settings.payment || {});
+  (['cash', 'gcash', 'card']).forEach(m => { const c = $('#pay-chip-' + m + ' input'); if (c) c.checked = (pay.methods || []).includes(m); });
+  if ($('#settings-pay-deposit')) $('#settings-pay-deposit').value = pay.defaultDepositPct;
+  if ($('#settings-pay-requiredeposit')) $('#settings-pay-requiredeposit').value = String(pay.requireDeposit);
   if ($('#settings-users-tbody')) {
     if (db.users.length) {
       $('#settings-users-tbody').innerHTML = db.users.map(u => `<tr><td class="cell-primary">${esc(u.email)}</td><td>${esc(u.email)}</td><td><span class="badge badge-blue"><span class="bdot"></span>${esc(u.role)}</span></td><td class="actions-cell"><div class="kebab-wrap"><button class="kebab-btn" onclick="toggleKebab(this)">&#8942;</button><div class="kebab-menu"><button class="danger" data-act="delete-user" data-id="${u.id}"><i class="ti ti-trash"></i> Delete</button></div></div></td></tr>`).join('');
@@ -833,9 +862,21 @@ function renderSettings() {
     }
   }
 }
-function saveSettings() { db.settings.salonName = $('#settings-salon-name').value.trim(); db.settings.salonAddress = $('#settings-salon-address').value.trim(); db.settings.salonPhone = $('#settings-salon-phone').value.trim(); db.settings.salonEmail = $('#settings-salon-email').value.trim(); db.settings.taxRate = Number($('#settings-tax-rate').value); db.settings.currency = $('#settings-currency').value.trim(); db.settings.lowStockThreshold = Number($('#settings-lowstock-threshold').value); saveLocal(); toast('Settings saved'); }
+function saveSettings() { db.settings.salonName = $('#settings-salon-name').value.trim(); db.settings.salonAddress = $('#settings-salon-address').value.trim(); db.settings.salonPhone = $('#settings-salon-phone').value.trim(); db.settings.salonEmail = $('#settings-salon-email').value.trim(); db.settings.logo = ($('#settings-logo') ? $('#settings-logo').value : '').trim(); db.settings.taxRate = Number($('#settings-tax-rate').value); db.settings.currency = $('#settings-currency').value.trim(); db.settings.lowStockThreshold = Number($('#settings-lowstock-threshold').value); saveLocal(); toast('Settings saved'); }
 function saveBusinessInfo() { saveSettings(); }
 function saveSystemSettings() { saveSettings(); }
+function saveBusinessHours() { db.settings.businessHours = { open: $('#settings-hours-open').value, close: $('#settings-hours-close').value, days: SCH_DAYS.filter(d => { const c = $('#hour-chip-' + d + ' input'); return c && c.checked; }) }; saveLocal(); toast('Business hours saved'); }
+function saveAppointmentRules() { db.settings.appointmentRules = { advanceDays: Number($('#settings-rule-window').value), noticeHours: Number($('#settings-rule-notice').value), bufferMin: Number($('#settings-rule-buffer').value), autoConfirm: $('#settings-rule-autoconfirm').value === 'true', allowDoubleBook: $('#settings-rule-doublebook').value === 'true' }; saveLocal(); toast('Appointment rules saved'); }
+function savePaymentSettings() { db.settings.payment = { methods: ['cash', 'gcash', 'card'].filter(m => { const c = $('#pay-chip-' + m + ' input'); return c && c.checked; }), defaultDepositPct: Number($('#settings-pay-deposit').value), requireDeposit: $('#settings-pay-requiredeposit').value === 'true' }; saveLocal(); toast('Payment settings saved'); }
+function applyBrand() {
+  const mark = $('#brand-mark'), name = $('#brand-name');
+  const logo = (db.settings && db.settings.logo) || '';
+  if (name) name.textContent = (db.settings && db.settings.salonName) || 'Bloom Studio';
+  if (mark) {
+    if (logo) { mark.innerHTML = `<img src="${esc(logo)}" style="width:26px;height:26px;border-radius:6px;object-fit:cover" onerror="this.style.display='none'">`; }
+    else { mark.innerHTML = `<i class="ti ti-flower"></i>`; }
+  }
+}
 
 // ─── Auth ────────────────────────────────────────────────────
 function setUserInfo(u) { if (!u) { $('#user-email').textContent = ''; $('#user-role').textContent = ''; $('#top-avatar').textContent = ''; return; } $('#user-email').textContent = u.email || ''; $('#user-role').textContent = ROLE_LABEL[u.role] || u.role; $('#top-avatar').textContent = u.name ? initials(u.name) : 'U'; if (u.role) renderSidebar(u); }
@@ -905,6 +946,7 @@ document.addEventListener('click', e => {
     const id = act.dataset.id;
     switch (act.dataset.act) {
       case 'checkin': case 'complete': case 'cancel': case 'confirm': apptAction(act.dataset.act, id); break;
+      case 'reschedule': openApptModal(id); break;
       case 'edit-client': openClientModal(id); break;
       case 'delete-client': deleteClient(id); break;
       case 'edit-staff': openStaffModal(id); break;
