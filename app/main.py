@@ -189,6 +189,40 @@ async def seed_accounts():
             )
             db.add(staff_member)
 
+        # Ensure org is resolved (in case admin already existed).
+        if org is None and admin_user:
+            org = (await db.execute(
+                select(Organization).where(Organization.id == admin_user.organization_id)
+            )).scalar_one_or_none()
+
+        # Seed a separate Super Admin (owner) account with full rights.
+        owner_exists = (
+            await db.execute(select(PlatformUser).where(PlatformUser.email == "owner@salon.com"))
+        ).scalar_one_or_none()
+
+        if not owner_exists and org:
+            owner_user = PlatformUser(
+                id=uuid.uuid4(),
+                organization_id=org.id,
+                email="owner@salon.com",
+                hashed_password=hash_password("owner123"),
+                role="owner",
+            )
+            db.add(owner_user)
+            await db.flush()
+
+            owner_staff = Staff(
+                id=uuid.uuid4(),
+                organization_id=org.id,
+                user_id=owner_user.id,
+                display_name="Super Admin",
+                title="Owner",
+                active=True,
+                created_by=owner_user.id,
+                updated_by=owner_user.id,
+            )
+            db.add(owner_staff)
+
         await db.commit()
 
 
