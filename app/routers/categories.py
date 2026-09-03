@@ -13,7 +13,7 @@ from app.schemas.schemas import CategoryCreate, CategoryOut
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
-ADMIN_ONLY = ("admin",)
+ADMIN_ONLY = ("admin", "superadmin")
 
 
 async def _get_category_or_404(db: AsyncSession, category_id: UUID, organization_id: UUID) -> ServiceCategory:

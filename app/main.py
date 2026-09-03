@@ -195,7 +195,35 @@ async def seed_accounts():
                 select(Organization).where(Organization.id == admin_user.organization_id)
             )).scalar_one_or_none()
 
-        # Seed a separate Super Admin (owner) account with full rights.
+        # Seed a separate Super Admin (superadmin) account with full rights.
+        superadmin_exists = (
+            await db.execute(select(PlatformUser).where(PlatformUser.email == "superadmin@salon.com"))
+        ).scalar_one_or_none()
+
+        if not superadmin_exists and org:
+            superadmin_user = PlatformUser(
+                id=uuid.uuid4(),
+                organization_id=org.id,
+                email="superadmin@salon.com",
+                hashed_password=hash_password("superadmin123"),
+                role="superadmin",
+            )
+            db.add(superadmin_user)
+            await db.flush()
+
+            superadmin_staff = Staff(
+                id=uuid.uuid4(),
+                organization_id=org.id,
+                user_id=superadmin_user.id,
+                display_name="Super Admin",
+                title="Super Admin",
+                active=True,
+                created_by=superadmin_user.id,
+                updated_by=superadmin_user.id,
+            )
+            db.add(superadmin_staff)
+
+        # Seed the Owner account (separate top-tier role).
         owner_exists = (
             await db.execute(select(PlatformUser).where(PlatformUser.email == "owner@salon.com"))
         ).scalar_one_or_none()
@@ -215,7 +243,7 @@ async def seed_accounts():
                 id=uuid.uuid4(),
                 organization_id=org.id,
                 user_id=owner_user.id,
-                display_name="Super Admin",
+                display_name="Owner",
                 title="Owner",
                 active=True,
                 created_by=owner_user.id,

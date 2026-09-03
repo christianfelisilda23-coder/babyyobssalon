@@ -221,6 +221,41 @@
       </section>
 
       <!-- ============ Staff ============ -->
+      <!-- ============ User Management (Super Admin) ============ -->
+      <section id="page-user-management" style="display:none">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">User Management</h1>
+            <p class="page-sub" id="usermgmt-total"></p>
+          </div>
+          <button class="btn btn-primary" onclick="openStaffModal()"><i class="ti ti-plus"></i> Add user</button>
+        </div>
+
+        <div class="filter-bar panel">
+          <div class="search-wrap"><i class="ti ti-search"></i>
+            <input class="search-input" data-key="staff" placeholder="Search users...">
+          </div>
+          <select class="filter-select" id="staff-status">
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+
+        <div class="panel">
+          <div class="table-scroll"><table>
+            <thead><tr><th>User</th><th>Role</th><th>Contact</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="user-management-tbody"></tbody>
+          </table></div>
+          <div class="empty-state" id="user-management-empty" style="display:none">
+            <div class="icon"><i class="ti ti-user-circle"></i></div>
+            <h4>No users found</h4>
+            <p>Add your first user account.</p>
+          </div>
+          <div class="mobile-list" id="user-management-mobile"></div>
+        </div>
+      </section>
+
       <section id="page-staff" style="display:none">
         <div class="page-header">
           <div>
@@ -901,10 +936,13 @@
       <div class="field"><label>Full name</label><input id="sf-name"></div>
       <div class="field"><label>Role</label>
         <select id="sf-role">
+          <option value="Super Admin">Super Admin</option>
+          <option value="Admin/Manager">Admin/Manager</option>
+          <option value="Receptionist">Receptionist</option>
+          <option value="Stylist/Beautician">Stylist/Beautician</option>
           <option value="Stylist">Stylist</option>
           <option value="Owner">Owner</option>
           <option value="Manager">Manager</option>
-          <option value="Receptionist">Receptionist</option>
           <option value="Nail Technician">Nail Technician</option>
           <option value="Esthetician">Esthetician</option>
           <option value="Colorist">Colorist</option>

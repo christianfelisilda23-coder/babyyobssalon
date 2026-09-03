@@ -76,7 +76,7 @@ async function loadAllData() {
       return { id: p.id, appointmentId: p.appointment_id, date: (p.paid_at || p.created_at || '').slice(0, 10), customer: appt ? appt.client : 'Customer', amount: p.amount_cents / 100, method: p.method, status: p.status, tip: p.tip_cents / 100, discount: p.discount_cents / 100, _raw: p };
     });
 
-    if (tokenPayload && ['admin', 'owner', 'front_desk'].includes(tokenPayload.role)) {
+    if (tokenPayload && ['admin', 'owner', 'front_desk', 'superadmin'].includes(tokenPayload.role)) {
       try { db.users = await api('GET', '/auth/users'); } catch(e) { db.users = []; }
     }
     try { db.notifications = await api('GET', '/notifications'); } catch(e) { db.notifications = []; }
@@ -103,8 +103,8 @@ function toast(m, e) { const el = $('#toast'); if (!el) return; el.textContent =
 
 const APPT_STATUS = { requested: { label: 'Requested', badge: 'badge-amber' }, confirmed: { label: 'Confirmed', badge: 'badge-blue' }, in_progress: { label: 'In Progress', badge: 'badge-emerald' }, completed: { label: 'Completed', badge: 'badge-gray' }, cancelled: { label: 'Cancelled', badge: 'badge-rose' }, no_show: { label: 'No Show', badge: 'badge-rose' } };
 const STAFF_STATUS = { active: { label: 'Active', badge: 'badge-emerald' }, inactive: { label: 'Inactive', badge: 'badge-rose' } };
-const ROLE_ACCESS = { admin: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'activity-logs', 'reviews', 'settings'], owner: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'activity-logs', 'reviews', 'settings'], staff: ['dashboard', 'appointments', 'billing'], front_desk: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'activity-logs', 'reviews', 'settings'], specialist: ['dashboard', 'appointments', 'billing'],   client: ['my-bookings', 'book-appointment', 'notifications'] };
-const ROLE_LABEL = { admin: 'Administrator', owner: 'Owner', staff: 'Staff', front_desk: 'Front Desk', specialist: 'Specialist', client: 'Customer' };
+const ROLE_ACCESS = { admin: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'activity-logs', 'user-management', 'reviews', 'settings'], owner: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'activity-logs', 'user-management', 'reviews', 'settings'], superadmin: ['dashboard', 'user-management', 'clients', 'services', 'appointments', 'scheduling', 'billing', 'reports', 'activity-logs', 'settings'], staff: ['dashboard', 'appointments', 'billing'], front_desk: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'activity-logs', 'user-management', 'reviews', 'settings'], specialist: ['dashboard', 'appointments', 'billing'],   client: ['my-bookings', 'book-appointment', 'notifications'] };
+const ROLE_LABEL = { admin: 'Administrator', owner: 'Owner', superadmin: 'Super Admin', staff: 'Staff', front_desk: 'Front Desk', specialist: 'Specialist', client: 'Customer' };
 function canAccess(page) { const u = currentUser(); return !!u && (ROLE_ACCESS[u.role] || []).includes(page); }
 function currentUser() { return tokenPayload ? { id: tokenPayload.userId, role: tokenPayload.role, email: tokenPayload.email || '' } : null; }
 
@@ -114,18 +114,18 @@ function navigate(page) {
   if (!canAccess(page)) page = 'dashboard';
   currentPage = page;
   $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
-  ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'activity-logs', 'reviews', 'settings', 'my-bookings', 'book-appointment'].forEach(p => { const el = $('#page-' + p); if (el) el.style.display = p === page ? 'block' : 'none'; });
+  ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'activity-logs', 'reviews', 'settings', 'user-management', 'my-bookings', 'book-appointment'].forEach(p => { const el = $('#page-' + p); if (el) el.style.display = p === page ? 'block' : 'none'; });
   closeAllKebabs(); render();
 }
 function render() {
   if ($('#nav-appts')) $('#nav-appts').textContent = db.appointments.filter(a => a.status !== 'cancelled' && a.status !== 'completed').length;
   if ($('#nav-lowstock')) $('#nav-lowstock').textContent = db.products.filter(p => p.stock <= p.lowStockThreshold).length;
-  const fn = { dashboard: renderDashboard, appointments: renderAppointments, clients: renderClients, staff: renderStaff, services: renderServices, inventory: renderInventory, scheduling: renderScheduling, billing: renderBilling, loyalty: renderLoyalty, reports: renderReports, notifications: renderNotifications, reviews: renderReviews, settings: renderSettings, 'my-bookings': renderMyBookings, 'book-appointment': renderBookAppointment }[currentPage];
+  const fn = { dashboard: renderDashboard, appointments: renderAppointments, clients: renderClients, staff: renderStaff, services: renderServices, inventory: renderInventory, scheduling: renderScheduling, billing: renderBilling, loyalty: renderLoyalty, reports: renderReports, notifications: renderNotifications, 'activity-logs': renderActivityLogs, 'user-management': renderUserManagement, reviews: renderReviews, settings: renderSettings, 'my-bookings': renderMyBookings, 'book-appointment': renderBookAppointment }[currentPage];
   if (fn) fn();
 }
 function renderSidebar(u) {
   const allowed = ROLE_ACCESS[u.role] || [];
-  const G = [
+  let G = [
     { label: 'Overview', items: [{ page: 'dashboard', icon: 'ti ti-layout-dashboard', label: 'Dashboard' }, { page: 'appointments', icon: 'ti ti-calendar-event', label: 'Appointments', badge: 'nav-appts' }] },
     { label: 'Management', items: [{ page: 'clients', icon: 'ti ti-users', label: 'Clients' }, { page: 'staff', icon: 'ti ti-user-circle', label: 'Staff' }, { page: 'services', icon: 'ti ti-scissors', label: 'Services' }, { page: 'inventory', icon: 'ti ti-package', label: 'Inventory', badge: 'nav-lowstock' }] },
     { label: 'Operations', items: [{ page: 'scheduling', icon: 'ti ti-calendar-month', label: 'Scheduling' }, { page: 'billing', icon: 'ti ti-receipt', label: 'Billing' }, { page: 'loyalty', icon: 'ti ti-award', label: 'Loyalty' }] },
@@ -133,6 +133,14 @@ function renderSidebar(u) {
     { label: 'Admin', items: [{ page: 'settings', icon: 'ti ti-settings', label: 'Settings' }] },
     { label: 'Customer', items: [{ page: 'my-bookings', icon: 'ti ti-calendar-check', label: 'My Appointments' }, { page: 'book-appointment', icon: 'ti ti-calendar-plus', label: 'Book Appointment' }, { page: 'notifications', icon: 'ti ti-bell', label: 'Notifications' }] }
   ];
+  if (u.role === 'superadmin') {
+    G = [
+      { label: 'Super Admin Portal', items: [{ page: 'dashboard', icon: 'ti ti-layout-dashboard', label: 'Dashboard' }] },
+      { label: 'Management', items: [{ page: 'user-management', icon: 'ti ti-user-cog', label: 'User Management' }, { page: 'clients', icon: 'ti ti-users', label: 'Customers' }, { page: 'services', icon: 'ti ti-scissors', label: 'Services' }, { page: 'appointments', icon: 'ti ti-calendar-event', label: 'Appointments' }] },
+      { label: 'Operations', items: [{ page: 'scheduling', icon: 'ti ti-calendar-month', label: 'Staff Schedule' }, { page: 'billing', icon: 'ti ti-receipt', label: 'Payments' }] },
+      { label: 'System', items: [{ page: 'reports', icon: 'ti ti-chart-bar', label: 'Reports' }, { page: 'activity-logs', icon: 'ti ti-history', label: 'Activity Logs' }, { page: 'settings', icon: 'ti ti-settings', label: 'Settings' }] }
+    ];
+  }
   $('#sidebar-nav').innerHTML = G.map(g => { const items = g.items.filter(i => allowed.includes(i.page)); if (!items.length) return ''; return `<div class="nav-section">${g.label}</div>` + items.map(i => `<a class="nav-item${i.page === currentPage ? ' active' : ''}" data-page="${i.page}" href="#"><i class="${i.icon}"></i> ${i.label}${i.badge ? ` <span class="badge-count" id="${i.badge}">0</span>` : ''}</a>`).join(''); }).join('');
 }
 
@@ -300,6 +308,21 @@ async function renderStaff() {
   $('#staff-empty').style.display = info.total ? 'none' : 'block'; $('#staff-pager').innerHTML = pagerHTML('staff', info);
   $('#staff-total').textContent = info.total + ' member' + (info.total === 1 ? '' : 's');
   $('#staff-mobile').innerHTML = info.rows.map(s => `<div class="mcard"><div class="mcard-top"><span class="mcard-title">${esc(s.name)}</span><span class="badge ${STAFF_STATUS[s.status]?.badge || 'badge-gray'}"><span class="bdot"></span>${STAFF_STATUS[s.status]?.label || s.status}</span></div><div class="mcard-sub">${esc(s.role)}</div><div class="mcard-row"><span>${esc(s.phone)}</span></div></div>`).join('');
+}
+// ─── User Management (Super Admin) ──────────────────────────
+async function renderUserManagement() {
+  const f = filters.staff;
+  const src = db.users || [];
+  const srcFiltered = src.filter(u => { if (f.q && !((u.email || u.role).toLowerCase().includes(f.q.toLowerCase()))) return false; if (f.status !== 'all' && u.status && u.status !== f.status) return false; return true; });
+  if ($('#usermgmt-total')) $('#usermgmt-total').textContent = src.length + ' user account' + (src.length === 1 ? '' : 's');
+  if ($('#user-management-tbody')) $('#user-management-tbody').innerHTML = srcFiltered.map(u => `<tr>
+    <td><div style="display:flex;align-items:center;gap:10px"><div class="avatar" style="width:28px;height:28px;font-size:10px">${esc(initials(u.email || 'User'))}</div><span class="cell-primary">${esc(u.email || '—')}</span></div></td>
+    <td><span class="badge badge-blue"><span class="bdot"></span>${esc(ROLE_LABEL[u.role] || u.role || 'Staff')}</span></td>
+    <td class="cell-muted">${esc(u.email || '')}</td>
+    <td><span class="badge ${u.role === 'superadmin' ? 'badge-amber' : 'badge-emerald'}"><span class="bdot"></span>${u.active === false ? 'Inactive' : 'Active'}</span></td>
+  </tr>`).join('') || `<tr><td class="cell-muted" colspan="4" style="text-align:center;padding:20px">No user accounts found</td></tr>`;
+  if ($('#user-management-empty')) $('#user-management-empty').style.display = src.length ? 'none' : 'block';
+  if ($('#user-management-mobile')) $('#user-management-mobile').innerHTML = srcFiltered.map(u => `<div class="mcard"><div class="mcard-top"><span class="mcard-title">${esc(u.email || '—')}</span><span class="badge badge-blue"><span class="bdot"></span>${esc(ROLE_LABEL[u.role] || u.role || 'Staff')}</span></div><div class="mcard-sub">${esc(u.role)}</div></div>`).join('');
 }
 let editingStaffId = null;
 function openStaffModal(id) { editingStaffId = id || null; $('#staff-err').textContent = ''; const s = id ? db.staff.find(x => x.id === id) : null; $('#staff-modal-title').textContent = s ? 'Edit staff' : 'Add staff'; $('#sf-name').value = s ? s.name : ''; $('#sf-role').value = s ? s.role : 'Stylist'; $('#sf-phone').value = s ? s.phone : ''; $('#sf-email').value = s ? s.email : ''; $('#sf-status').value = s ? s.status : 'active'; if ($('#sf-login-email')) $('#sf-login-email').value = ''; if ($('#sf-pass')) $('#sf-pass').value = ''; if ($('#sf-email-field')) $('#sf-email-field').style.display = s ? 'none' : 'block'; if ($('#sf-pass-field')) $('#sf-pass-field').style.display = s ? 'none' : 'block'; openModal('#staff-modal'); }

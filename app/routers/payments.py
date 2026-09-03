@@ -13,7 +13,7 @@ from app.schemas.schemas import AppointmentBalanceOut, PaymentCreate, PaymentOut
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
-STAFF_ROLES = ("admin", "front_desk")
+STAFF_ROLES = ("admin", "front_desk", "superadmin")
 
 
 async def _get_appointment_or_404(db: AsyncSession, appointment_id: UUID, organization_id: UUID) -> Appointment:

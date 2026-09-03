@@ -20,7 +20,7 @@ from app.schemas.schemas import ClientOut, WalkInConvertRequest, WalkInCreate, W
 
 router = APIRouter(prefix="/walk-ins", tags=["walk-ins"])
 
-STAFF_ROLES = ("admin", "front_desk")
+STAFF_ROLES = ("admin", "front_desk", "superadmin")
 
 
 async def _get_walkin_or_404(db: AsyncSession, walk_in_id: UUID, organization_id: UUID) -> WalkInCustomer:

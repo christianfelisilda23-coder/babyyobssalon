@@ -14,7 +14,7 @@ from app.schemas.schemas import ProductCreate, ProductOut, ProductUpdate, Produc
 
 router = APIRouter(prefix="/products", tags=["products"])
 
-STAFF_ROLES = ("admin", "front_desk")
+STAFF_ROLES = ("admin", "front_desk", "superadmin")
 
 
 async def _get_product_or_404(db: AsyncSession, product_id: UUID, organization_id: UUID) -> Product:

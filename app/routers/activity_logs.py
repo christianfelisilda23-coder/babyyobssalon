@@ -12,7 +12,7 @@ from app.models.activity_log import ActivityLog
 
 router = APIRouter(prefix="/activity-logs", tags=["activity-logs"])
 
-ADMIN_ROLES = ("admin", "owner", "front_desk")
+ADMIN_ROLES = ("admin", "owner", "front_desk", "superadmin")
 
 
 class ActivityLogOut(BaseModel):
@@ -83,7 +83,7 @@ async def activity_summary(
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
 async def clear_activity_logs(
     db: AsyncSession = Depends(get_db),
-    principal: Principal = Depends(require_role("admin")),
+    principal: Principal = Depends(require_role("admin", "superadmin")),
 ):
     """Delete all activity logs for this organization (admin only)."""
     logs = (

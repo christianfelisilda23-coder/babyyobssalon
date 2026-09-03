@@ -14,7 +14,7 @@ from app.services import appointments as appointment_service
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
-FRONT_DESK_ROLES = ("admin", "front_desk")
+FRONT_DESK_ROLES = ("admin", "front_desk", "superadmin")
 
 
 def _owned_appointment_stmt(organization_id: UUID, appointment_id: UUID):

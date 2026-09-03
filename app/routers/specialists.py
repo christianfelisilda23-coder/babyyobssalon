@@ -14,7 +14,7 @@ from app.services import appointments as appointment_service
 
 router = APIRouter(prefix="/specialists", tags=["specialists"])
 
-ADMIN_ONLY = ("admin",)
+ADMIN_ONLY = ("admin", "superadmin")
 
 
 async def _get_specialist_or_404(db: AsyncSession, specialist_id: UUID, organization_id: UUID) -> Specialist:

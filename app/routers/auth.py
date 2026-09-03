@@ -208,7 +208,7 @@ async def get_me(
 async def create_user(
     payload: CreateUserRequest,
     db: AsyncSession = Depends(get_db),
-    principal: Principal = Depends(require_role("admin")),
+    principal: Principal = Depends(require_role("admin", "superadmin")),
 ):
     """Create a platform user within the current organization. Admin only."""
     existing = (
@@ -233,7 +233,7 @@ async def create_user(
 @router.get("/users", response_model=list[UserOut])
 async def list_users(
     db: AsyncSession = Depends(get_db),
-    principal: Principal = Depends(require_role("admin", "owner", "front_desk")),
+    principal: Principal = Depends(require_role("admin", "owner", "front_desk", "superadmin")),
 ):
     """List platform users in the current organization."""
     result = await db.execute(
@@ -246,7 +246,7 @@ async def list_users(
 async def delete_user(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    principal: Principal = Depends(require_role("admin")),
+    principal: Principal = Depends(require_role("admin", "superadmin")),
 ):
     """Delete a platform user in the current organization. Admin only."""
     user = (

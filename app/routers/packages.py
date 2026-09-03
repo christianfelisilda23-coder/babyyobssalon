@@ -13,7 +13,7 @@ from app.schemas.schemas import PackageCreate, PackageItemIn, PackageOut, Packag
 
 router = APIRouter(prefix="/packages", tags=["packages"])
 
-ADMIN_ONLY = ("admin",)
+ADMIN_ONLY = ("admin", "superadmin")
 
 
 async def _get_package_or_404(db: AsyncSession, package_id: UUID, organization_id: UUID) -> ServicePackage:

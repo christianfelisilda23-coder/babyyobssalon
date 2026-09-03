@@ -24,7 +24,7 @@ from app.services import appointments as appointment_service
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
-REPORT_ROLES = ("admin", "front_desk")
+REPORT_ROLES = ("admin", "front_desk", "superadmin")
 
 
 async def _resolve_specialist_id(
