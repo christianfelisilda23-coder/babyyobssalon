@@ -165,6 +165,45 @@ async def refresh(
     return _token_pair(user)
 
 
+@router.get("/me")
+async def get_me(
+    db: AsyncSession = Depends(get_db),
+    principal: Principal = Depends(get_current_principal),
+):
+    """Returns the current user's identity along with their client record
+    (matched by email within the same organization) if they are a client.
+    Lets the frontend reliably identify "who am I as a customer" without
+    relying on the email claim embedded in the JWT."""
+    user = (
+        await db.execute(
+            select(PlatformUser).where(
+                PlatformUser.id == principal.user_id,
+                PlatformUser.organization_id == principal.organization_id,
+            )
+        )
+    ).scalar_one_or_none()
+    client = None
+    if user is not None and user.email:
+        client = (
+            await db.execute(
+                select(Client).where(
+                    Client.organization_id == principal.organization_id,
+                    Client.email == user.email,
+                    Client.deleted_at.is_(None),
+                )
+            )
+        ).scalars().first()
+    result = {
+        "id": user.id if user else principal.user_id,
+        "organization_id": principal.organization_id,
+        "email": user.email if user else "",
+        "role": user.role if user else principal.role,
+    }
+    if client is not None:
+        result["client"] = client
+    return result
+
+
 @router.post("/users", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def create_user(
     payload: CreateUserRequest,

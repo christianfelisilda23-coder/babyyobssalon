@@ -851,8 +851,15 @@ document.addEventListener('click', e => { const dd = $('#notif-dropdown'); if (d
 // ─── Client: My Bookings ─────────────────────────────────────
 async function renderMyBookings() {
   const me = currentUser(); if (!me) return;
-  const myClient = db.clients.find(c => c.email && c.email.toLowerCase() === (tokenPayload.email || '').toLowerCase());
-  const myClientId = myClient ? myClient.id : null;
+  let myClientId = null;
+  try {
+    const meInfo = await api('GET', '/auth/me');
+    myClientId = meInfo && meInfo.client ? meInfo.client.id : null;
+  } catch(e) {}
+  if (!myClientId) {
+    const myClient = db.clients.find(c => c.email && c.email.toLowerCase() === (tokenPayload.email || '').toLowerCase());
+    myClientId = myClient ? myClient.id : null;
+  }
   const myAppts = myClientId ? db.appointments.filter(a => a.clientId === myClientId) : [];
   const tbody = $('#mybookings-tbody');
   if (tbody) tbody.innerHTML = myAppts.map(a => `<tr><td class="cell-primary">${esc(a.date)}</td><td>${esc(a.time)}</td><td>${esc(a.service)}</td><td>${esc(a.staff)}</td><td><span class="badge ${APPT_STATUS[a.status]?.badge || 'badge-gray'}"><span class="bdot"></span>${APPT_STATUS[a.status]?.label || a.status}</span></td><td>${money(a.price)}</td><td>${a.status === 'requested' || a.status === 'confirmed' ? '<button class="btn btn-sm btn-outline" onclick="cancelMyBooking(\'' + a.id + '\')"><i class="ti ti-ban"></i> Cancel</button>' : ''}</td></tr>`).join('');
@@ -878,9 +885,15 @@ async function submitBooking() {
   try {
     const me = currentUser(); if (!me) { $('#bk-err').textContent = 'Not logged in'; return; }
     let clientId = null;
-    const myClient = db.clients.find(c => c.email === (tokenPayload.email || ''));
-    if (myClient) clientId = myClient.id;
-    if (!clientId) { const c = await api('POST', '/clients', { full_name: tokenPayload.userId || 'Customer', phone: '', email: tokenPayload.email || null, notes: 'Created from booking' }); clientId = c.id; }
+    try {
+      const meInfo = await api('GET', '/auth/me');
+      clientId = meInfo && meInfo.client ? meInfo.client.id : null;
+    } catch(e) {}
+    if (!clientId) {
+      const myClient = db.clients.find(c => c.email === (tokenPayload.email || ''));
+      if (myClient) clientId = myClient.id;
+    }
+    if (!clientId) { const c = await api('POST', '/clients', { full_name: tokenPayload.email || 'Customer', phone: '', email: tokenPayload.email || null, notes: 'Created from booking' }); clientId = c.id; }
     const payload = { client_id: clientId, staff_id: staffId || db.staff[0].id, service_id: serviceId, start_time: toISOWithTZ(date, time), discount_cents: 0 };
     await api('POST', '/appointments', payload);
     await loadAllData(); currentPage = 'my-bookings'; render(); toast('Appointment booked!');
@@ -890,6 +903,7 @@ async function submitBooking() {
 // ─── Init ────────────────────────────────────────────────────
 window.addEventListener('load', async () => {
   if (authToken) {
+    if (refreshToken) { await tryRefresh(); }
     tokenPayload = decodeToken(authToken);
     if (tokenPayload) {
       await loadAllData();
