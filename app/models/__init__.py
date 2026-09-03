@@ -35,6 +35,7 @@ from app.models.staff import (
     StaffService,
 )
 from app.models.notifications import Notification
+from app.models.activity_log import ActivityLog
 
 __all__ = [
     "Base",
@@ -64,4 +65,5 @@ __all__ = [
     "Commission",
     "ServiceHistory",
     "Notification",
+    "ActivityLog",
 ]

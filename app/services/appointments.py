@@ -53,6 +53,7 @@ from app.models import (
 )
 from app.schemas.schemas import AppointmentCreate
 from app.routers.notifications import create_notification
+from app.routers.activity_logs import log_activity
 
 ACTIVE_STATUSES = (
     AppointmentStatus.requested,
@@ -267,6 +268,16 @@ async def create_appointment(
             if cl:
                 client_name = cl.full_name
         svc_name = lines[0]["service_name"] if lines else "service"
+
+        # Log the booking
+        await log_activity(
+            db, organization_id,
+            action="appointment.created", entity_type="appointment",
+            description=f"Booked {svc_name} for {client_name or 'walk-in'} on {payload.start_time.strftime('%b %d, %Y at %I:%M %p')}.",
+            actor_id=user_id,
+            entity_id=appointment.id,
+        )
+
         for u in admin_users:
             await create_notification(
                 db, organization_id, u.id, "appointment_request",
@@ -435,6 +446,7 @@ async def transition_status(
     new_status: AppointmentStatus,
     user_id: UUID,
     cancellation_reason: str | None = None,
+    actor_name: str = "",
 ) -> Appointment:
     allowed = LEGAL_TRANSITIONS.get(appointment.status, set())
     if new_status not in allowed:
@@ -467,6 +479,16 @@ async def transition_status(
     await db.commit()
     await db.refresh(appointment)
     await db.refresh(appointment, ["appointment_services"])
+
+    # Log the status change
+    await log_activity(
+        db, appointment.organization_id,
+        action=f"appointment.{new_status.value}", entity_type="appointment",
+        description=f"Appointment status changed to '{new_status.value}'.",
+        actor_id=user_id,
+        actor_name=actor_name,
+        entity_id=appointment.id,
+    )
 
     # Notify the client about the status change
     if appointment.client_id and new_status in (

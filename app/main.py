@@ -12,6 +12,7 @@ from sqlalchemy import text
 from app.models.parties import Organization, PlatformUser
 from app.models.staff import Staff
 from app.routers import (
+    activity_logs,
     appointments,
     auth,
     categories,
@@ -62,6 +63,7 @@ app.include_router(products.router)
 app.include_router(payments.router)
 app.include_router(reports.router)
 app.include_router(notifications.router)
+app.include_router(activity_logs.router)
 
 
 @app.get("/health", tags=["health"])
@@ -88,6 +90,30 @@ async def ensure_notifications_table():
         """))
         await db.execute(text("CREATE INDEX IF NOT EXISTS ix_notifications_org_user ON notifications(organization_id, user_id)"))
         await db.execute(text("CREATE INDEX IF NOT EXISTS ix_notifications_org_user_read ON notifications(organization_id, user_id, is_read)"))
+        await db.commit()
+
+
+@app.on_event("startup")
+async def ensure_activity_logs_table():
+    """Create activity_logs table if it doesn't exist (Render doesn't run alembic)."""
+    async with AsyncSessionLocal() as db:
+        await db.execute(text("""
+            CREATE TABLE IF NOT EXISTS activity_logs (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                organization_id UUID NOT NULL REFERENCES organizations(id),
+                actor_id UUID NOT NULL,
+                actor_name VARCHAR(200) NOT NULL,
+                actor_role VARCHAR(32) NOT NULL DEFAULT '',
+                action VARCHAR(50) NOT NULL,
+                entity_type VARCHAR(50) NOT NULL,
+                entity_id VARCHAR(64),
+                description TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            )
+        """))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_activity_logs_org ON activity_logs(organization_id)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_activity_logs_org_created ON activity_logs(organization_id, created_at)"))
+        await db.execute(text("CREATE INDEX IF NOT EXISTS ix_activity_logs_org_entity ON activity_logs(organization_id, entity_type, entity_id)"))
         await db.commit()
 
 

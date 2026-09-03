@@ -103,7 +103,7 @@ function toast(m, e) { const el = $('#toast'); if (!el) return; el.textContent =
 
 const APPT_STATUS = { requested: { label: 'Requested', badge: 'badge-amber' }, confirmed: { label: 'Confirmed', badge: 'badge-blue' }, in_progress: { label: 'In Progress', badge: 'badge-emerald' }, completed: { label: 'Completed', badge: 'badge-gray' }, cancelled: { label: 'Cancelled', badge: 'badge-rose' }, no_show: { label: 'No Show', badge: 'badge-rose' } };
 const STAFF_STATUS = { active: { label: 'Active', badge: 'badge-emerald' }, inactive: { label: 'Inactive', badge: 'badge-rose' } };
-const ROLE_ACCESS = { admin: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], owner: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], staff: ['dashboard', 'appointments', 'billing'], front_desk: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings'], specialist: ['dashboard', 'appointments', 'billing'],   client: ['my-bookings', 'book-appointment', 'notifications'] };
+const ROLE_ACCESS = { admin: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'activity-logs', 'reviews', 'settings'], owner: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'activity-logs', 'reviews', 'settings'], staff: ['dashboard', 'appointments', 'billing'], front_desk: ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'activity-logs', 'reviews', 'settings'], specialist: ['dashboard', 'appointments', 'billing'],   client: ['my-bookings', 'book-appointment', 'notifications'] };
 const ROLE_LABEL = { admin: 'Administrator', owner: 'Owner', staff: 'Staff', front_desk: 'Front Desk', specialist: 'Specialist', client: 'Customer' };
 function canAccess(page) { const u = currentUser(); return !!u && (ROLE_ACCESS[u.role] || []).includes(page); }
 function currentUser() { return tokenPayload ? { id: tokenPayload.userId, role: tokenPayload.role, email: tokenPayload.email || '' } : null; }
@@ -114,7 +114,7 @@ function navigate(page) {
   if (!canAccess(page)) page = 'dashboard';
   currentPage = page;
   $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
-  ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'reviews', 'settings', 'my-bookings', 'book-appointment'].forEach(p => { const el = $('#page-' + p); if (el) el.style.display = p === page ? 'block' : 'none'; });
+  ['dashboard', 'appointments', 'clients', 'staff', 'services', 'inventory', 'scheduling', 'billing', 'loyalty', 'reports', 'notifications', 'activity-logs', 'reviews', 'settings', 'my-bookings', 'book-appointment'].forEach(p => { const el = $('#page-' + p); if (el) el.style.display = p === page ? 'block' : 'none'; });
   closeAllKebabs(); render();
 }
 function render() {
@@ -129,7 +129,7 @@ function renderSidebar(u) {
     { label: 'Overview', items: [{ page: 'dashboard', icon: 'ti ti-layout-dashboard', label: 'Dashboard' }, { page: 'appointments', icon: 'ti ti-calendar-event', label: 'Appointments', badge: 'nav-appts' }] },
     { label: 'Management', items: [{ page: 'clients', icon: 'ti ti-users', label: 'Clients' }, { page: 'staff', icon: 'ti ti-user-circle', label: 'Staff' }, { page: 'services', icon: 'ti ti-scissors', label: 'Services' }, { page: 'inventory', icon: 'ti ti-package', label: 'Inventory', badge: 'nav-lowstock' }] },
     { label: 'Operations', items: [{ page: 'scheduling', icon: 'ti ti-calendar-month', label: 'Scheduling' }, { page: 'billing', icon: 'ti ti-receipt', label: 'Billing' }, { page: 'loyalty', icon: 'ti ti-award', label: 'Loyalty' }] },
-    { label: 'Analytics', items: [{ page: 'reports', icon: 'ti ti-chart-bar', label: 'Reports' }, { page: 'notifications', icon: 'ti ti-bell', label: 'Notifications' }, { page: 'reviews', icon: 'ti ti-star', label: 'Reviews' }] },
+    { label: 'Analytics', items: [{ page: 'reports', icon: 'ti ti-chart-bar', label: 'Reports' }, { page: 'notifications', icon: 'ti ti-bell', label: 'Notifications' }, { page: 'activity-logs', icon: 'ti ti-history', label: 'Activity Logs' }, { page: 'reviews', icon: 'ti ti-star', label: 'Reviews' }] },
     { label: 'Admin', items: [{ page: 'settings', icon: 'ti ti-settings', label: 'Settings' }] },
     { label: 'Customer', items: [{ page: 'my-bookings', icon: 'ti ti-calendar-check', label: 'My Appointments' }, { page: 'book-appointment', icon: 'ti ti-calendar-plus', label: 'Book Appointment' }, { page: 'notifications', icon: 'ti ti-bell', label: 'Notifications' }] }
   ];
@@ -653,6 +653,48 @@ function openNotificationModal() { if ($('#notif-customer')) { const users = db.
 async function saveNotification() { const userId = $('#notif-customer') ? $('#notif-customer').value : '', type = $('#notif-type').value, message = $('#notif-message').value.trim(); if (!userId || !message) { if ($('#notif-err')) $('#notif-err').textContent = 'Recipient and message required.'; return; } const recipient = (db.users || []).find(u => u.id === userId); const title = (recipient ? recipient.email : 'Notification'); try { await api('POST', '/notifications', { user_id: userId, type, title, message }); } catch(e) { db.notifications.unshift({ id: 'notif_' + (db.nextId.notification++), type, title, message, is_read: false, created_at: new Date().toISOString() }); saveLocal(); } closeModal('#notification-modal'); renderNotifications(); toast('Notification sent'); renderNotifBell(); }
 function deleteNotif(id) { db.notifications = (db.notifications || []).filter(n => String(n.id) !== String(id)); saveLocal(); renderNotifications(); toast('Notification deleted', true); renderNotifBell(); }
 
+// ─── Activity Logs (API) ─────────────────────────────────────
+let activityLogs = [];
+async function loadActivityLogs() {
+  try {
+    const action = $('#activity-action') ? $('#activity-action').value : '';
+    const entity = $('#activity-entity') ? $('#activity-entity').value : '';
+    let url = '/activity-logs?limit=200';
+    if (action) url += '&action=' + encodeURIComponent(action);
+    if (entity) url += '&entity_type=' + encodeURIComponent(entity);
+    const data = await api('GET', url);
+    activityLogs = data && data.items ? data.items : [];
+  } catch(e) { activityLogs = []; }
+}
+function actBadge(action) {
+  const c = {
+    'appointment.created': 'badge-blue', 'appointment.confirmed': 'badge-blue', 'appointment.completed': 'badge-emerald',
+    'client.created': 'badge-emerald', 'client.updated': 'badge-amber', 'client.deleted': 'badge-rose',
+    'staff.created': 'badge-emerald', 'staff.updated': 'badge-amber', 'staff.deleted': 'badge-rose'
+  };
+  return `<span class="badge ${c[action] || 'badge-gray'}"><span class="bdot"></span>${esc(action.replace('.', ' '))}</span>`;
+}
+async function renderActivityLogs() {
+  await loadActivityLogs();
+  if (!activityLogs.length) {
+    if ($('#activity-tbody')) $('#activity-tbody').innerHTML = `<tr><td class="cell-muted" colspan="5" style="text-align:center;padding:20px">No activity yet</td></tr>`;
+    if ($('#activity-empty')) $('#activity-empty').style.display = 'block';
+    if ($('#activity-total')) $('#activity-total').textContent = '0 activities';
+    return;
+  }
+  if ($('#activity-empty')) $('#activity-empty').style.display = 'none';
+  if ($('#activity-tbody')) $('#activity-tbody').innerHTML = activityLogs.map(l => `<tr>
+    <td class="cell-primary">${esc(l.created_at ? l.created_at.replace('T', ' ').slice(0, 16) : '')}</td>
+    <td class="cell-primary">${esc(l.actor_name || l.actor_role || 'system')}</td>
+    <td>${actBadge(l.action)}</td>
+    <td><span class="badge badge-gray"><span class="bdot"></span>${esc(l.entity_type)}</span></td>
+    <td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.description)}</td>
+  </tr>`).join('');
+  if ($('#activity-total')) $('#activity-total').textContent = activityLogs.length + ' activit' + (activityLogs.length === 1 ? 'y' : 'ies');
+}
+async function refreshActivityLogs() { await renderActivityLogs(); toast('Activity log refreshed'); }
+async function clearActivityLogs() { if (!confirm('Clear all activity logs?')) return; try { await api('DELETE', '/activity-logs'); await renderActivityLogs(); toast('Activity log cleared', true); } catch(e) { toast(e.message, true); } }
+
 // ─── Reviews (localStorage only) ─────────────────────────────
 function renderReviews() {
   $('#reviews-tbody').innerHTML = db.reviews.map(r => `<tr><td class="cell-primary">${esc(r.customer)}</td><td>${esc(r.service)}</td><td>${esc(r.staff)}</td><td>${starsHTML(r.rating)}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.comment)}</td><td>${esc(r.date)}</td><td class="actions-cell"><div class="kebab-wrap"><button class="kebab-btn" onclick="toggleKebab(this)">&#8942;</button><div class="kebab-menu"><button data-act="respond-review" data-id="${r.id}"><i class="ti ti-message"></i> Respond</button><button class="danger" data-act="delete-review" data-id="${r.id}"><i class="ti ti-trash"></i> Delete</button></div></div></td></tr>`).join('') || `<tr><td class="cell-muted" colspan="7" style="text-align:center;padding:20px">No reviews yet</td></tr>`;
@@ -811,6 +853,7 @@ document.addEventListener('change', e => {
   if (sel.id === 'appts-date') { filters.appointments.date = sel.value; resetPage('appointments'); render(); return; }
   if (sel.id === 'staff-status') { filters.staff.status = sel.value; resetPage('staff'); render(); return; }
   if (sel.id === 'inv-cat-filter') { filters.inventory.category = sel.value; resetPage('inventory'); render(); return; }
+  if (sel.id === 'activity-action' || sel.id === 'activity-entity') { renderActivityLogs(); return; }
 });
 
 document.addEventListener('input', e => {

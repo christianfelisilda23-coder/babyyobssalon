@@ -146,6 +146,7 @@ async def update_appointment_status(
         new_status=payload.status,
         user_id=principal.user_id,
         cancellation_reason=payload.cancellation_reason,
+        actor_name=principal.email,
     )
 
 
@@ -167,4 +168,5 @@ async def complete_appointment(
         appointment=appointment,
         new_status=AppointmentStatus.completed,
         user_id=principal.user_id,
+        actor_name=principal.email,
     )

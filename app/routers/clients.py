@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.core.security import Principal, get_current_principal
 from app.models import Client, ServiceHistory
 from app.schemas.schemas import ClientCreate, ClientOut, ClientUpdate, ServiceHistoryOut
+from app.routers.activity_logs import log_activity
 
 router = APIRouter(prefix="/clients", tags=["clients"])
 
@@ -30,6 +31,14 @@ async def create_client(
     db.add(client)
     await db.commit()
     await db.refresh(client)
+    await log_activity(
+        db, principal.organization_id,
+        action="client.created", entity_type="client",
+        description=f"Added client '{client.full_name}'.",
+        actor_id=principal.user_id, actor_name=principal.email,
+        entity_id=client.id,
+    )
+    await db.commit()
     return client
 
 
@@ -89,6 +98,14 @@ async def update_client(
     client.updated_by = principal.user_id
     await db.commit()
     await db.refresh(client)
+    await log_activity(
+        db, principal.organization_id,
+        action="client.updated", entity_type="client",
+        description=f"Updated client '{client.full_name}'.",
+        actor_id=principal.user_id, actor_name=principal.email,
+        entity_id=client.id,
+    )
+    await db.commit()
     return client
 
 
@@ -101,6 +118,14 @@ async def delete_client(
     client = await _get_client_or_404(db, client_id, principal.organization_id)
     client.deleted_at = datetime.now(timezone.utc)
     client.updated_by = principal.user_id
+    await db.commit()
+    await log_activity(
+        db, principal.organization_id,
+        action="client.deleted", entity_type="client",
+        description=f"Deleted client '{client.full_name}'.",
+        actor_id=principal.user_id, actor_name=principal.email,
+        entity_id=client.id,
+    )
     await db.commit()
 
 

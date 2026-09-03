@@ -643,9 +643,44 @@
         </div>
       </section>
 
-      <!-- ============ Reviews ============ -->
-      <section id="page-reviews" style="display:none">
+      <!-- ============ Activity Logs ============ -->
+      <section id="page-activity-logs" style="display:none">
         <div class="page-header">
+          <div>
+            <h1 class="page-title">Activity Logs</h1>
+            <p class="page-sub" id="activity-total"></p>
+          </div>
+          <div class="page-actions">
+            <select id="activity-action" class="form-select" style="width:auto">
+              <option value="">All actions</option>
+            </select>
+            <select id="activity-entity" class="form-select" style="width:auto">
+              <option value="">All types</option>
+              <option value="appointment">Appointments</option>
+              <option value="client">Clients</option>
+              <option value="staff">Staff</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="refreshActivityLogs()"><i class="ti ti-refresh"></i> Refresh</button>
+            <button class="btn btn-delete btn-sm" onclick="clearActivityLogs()"><i class="ti ti-trash"></i> Clear</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="table-scroll"><table>
+            <thead><tr><th>When</th><th>Actor</th><th>Action</th><th>Type</th><th>Details</th></tr></thead>
+            <tbody id="activity-tbody"></tbody>
+          </table></div>
+          <div class="empty-state" id="activity-empty" style="display:none">
+            <div class="icon"><i class="ti ti-history"></i></div>
+            <h4>No activity yet</h4>
+            <p>Customer bookings, staff changes and appointment updates will show up here.</p>
+          </div>
+          <div class="mobile-list" id="activity-mobile"></div>
+        </div>
+      </section>
+
+      <!-- ============ Reviews ============ -->
+      <section id="page-reviews" style="display:none">        <div class="page-header">
           <div>
             <h1 class="page-title">Reviews &amp; Feedback</h1>
             <p class="page-sub">Customer reviews and ratings</p>

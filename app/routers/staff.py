@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.core.security import Principal, get_current_principal
 from app.models import Service, Staff, StaffService
 from app.schemas.schemas import StaffCreate, StaffOut, StaffServiceOut, StaffUpdate
+from app.routers.activity_logs import log_activity
 
 router = APIRouter(prefix="/staff", tags=["staff"])
 
@@ -50,6 +51,14 @@ async def create_staff(
     db.add(staff)
     await db.commit()
     await db.refresh(staff)
+    await log_activity(
+        db, principal.organization_id,
+        action="staff.created", entity_type="staff",
+        description=f"Added staff member '{staff.display_name}'.",
+        actor_id=principal.user_id, actor_name=principal.email,
+        entity_id=staff.id,
+    )
+    await db.commit()
     return staff
 
 
@@ -88,6 +97,14 @@ async def update_staff(
     staff.updated_by = principal.user_id
     await db.commit()
     await db.refresh(staff)
+    await log_activity(
+        db, principal.organization_id,
+        action="staff.updated", entity_type="staff",
+        description=f"Updated staff member '{staff.display_name}'.",
+        actor_id=principal.user_id, actor_name=principal.email,
+        entity_id=staff.id,
+    )
+    await db.commit()
     return staff
 
 
@@ -100,6 +117,14 @@ async def delete_staff(
     staff = await _get_staff_or_404(db, staff_id, principal.organization_id)
     staff.deleted_at = datetime.now(timezone.utc)
     staff.updated_by = principal.user_id
+    await db.commit()
+    await log_activity(
+        db, principal.organization_id,
+        action="staff.deleted", entity_type="staff",
+        description=f"Deleted staff member '{staff.display_name}'.",
+        actor_id=principal.user_id, actor_name=principal.email,
+        entity_id=staff.id,
+    )
     await db.commit()
 
 

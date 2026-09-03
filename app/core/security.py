@@ -34,6 +34,7 @@ class Principal(BaseModel):
     organization_id: UUID
     user_id: UUID
     role: str = "staff"
+    email: str = ""
 
 
 def hash_password(raw: str) -> str:
@@ -99,7 +100,12 @@ def _principal_from_payload(payload: dict) -> Principal:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token missing required claims",
         )
-    return Principal(organization_id=UUID(organization_id), user_id=UUID(user_id), role=role)
+    return Principal(
+        organization_id=UUID(organization_id),
+        user_id=UUID(user_id),
+        role=role,
+        email=str(payload.get("email", "") or ""),
+    )
 
 
 def get_current_principal(
